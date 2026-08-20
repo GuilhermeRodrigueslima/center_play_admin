@@ -1,0 +1,36 @@
+﻿generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String?
+  xtreamUrl String
+  isActive  Boolean  @default(true)
+  expiresAt DateTime?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppSettings {
+  id            String   @id @default(cuid())
+  xtreamUrl     String
+  globalMessage String?
+  updatedAt     DateTime @updatedAt
+}
