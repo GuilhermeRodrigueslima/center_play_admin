@@ -54,6 +54,20 @@ export default function DevicesPage() {
 
   useEffect(() => {
     fetchDevices();
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlMac = params.get('mac');
+      const urlKey = params.get('key');
+      if (urlMac) {
+        setSearch(urlMac);
+        setForm((prev) => ({
+          ...prev,
+          macAddress: urlMac,
+          deviceKey: urlKey || prev.deviceKey,
+        }));
+        setModalOpen(true);
+      }
+    }
   }, []);
 
   const openAddModal = () => {
