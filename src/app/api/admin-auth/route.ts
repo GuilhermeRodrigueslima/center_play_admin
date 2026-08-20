@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
@@ -7,7 +7,8 @@ export async function POST(req: Request) {
     const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
     if (password === expectedPassword) {
-      cookies().set('admin_token', password, { 
+      const cookieStore = await cookies();
+      cookieStore.set('admin_token', password, { 
         httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
         maxAge: 60 * 60 * 24 * 7 // 1 semana
