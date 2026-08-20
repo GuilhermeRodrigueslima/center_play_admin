@@ -28,6 +28,22 @@ model Client {
   updatedAt DateTime @updatedAt
 }
 
+model Device {
+  id          String    @id @default(cuid())
+  macAddress  String    @unique
+  deviceKey   String
+  name        String?
+  xtreamUrl   String?
+  username    String?
+  password    String?
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  notes       String?
+  lastSeenAt  DateTime? @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model AppSettings {
   id            String   @id @default(cuid())
   xtreamUrl     String
