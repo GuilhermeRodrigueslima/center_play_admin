@@ -16,6 +16,49 @@ interface Device {
   notes: string | null;
 }
 
+// Parser inteligente para qualquer link M3U / HLS / SSIPTV
+function parseM3uLink(rawUrl: string) {
+  try {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return null;
+    
+    const parsed = new URL(trimmed.startsWith('http') ? trimmed : `http://${trimmed}`);
+    const hostUrl = `${parsed.protocol}//${parsed.host}`;
+    
+    // 1. M3U / HLS Completo: get.php?username=XXX&password=YYY...
+    if (parsed.searchParams.has('username') && parsed.searchParams.has('password')) {
+      return {
+        xtreamUrl: hostUrl,
+        username: parsed.searchParams.get('username') || '',
+        password: parsed.searchParams.get('password') || '',
+      };
+    }
+    
+    // 2. M3U / HLS / SSIPTV Curto: /p/USERNAME/PASSWORD/m3u ou /hls ou /ssiptv
+    const pMatch = parsed.pathname.match(/\/p\/([^\/]+)\/([^\/]+)/i);
+    if (pMatch && pMatch[1] && pMatch[2]) {
+      return {
+        xtreamUrl: hostUrl,
+        username: pMatch[1],
+        password: pMatch[2],
+      };
+    }
+    
+    // 3. Streams diretos: /live/USERNAME/PASSWORD/123.m3u8
+    const liveMatch = parsed.pathname.match(/\/(?:live|movie|series)\/([^\/]+)\/([^\/]+)/i);
+    if (liveMatch && liveMatch[1] && liveMatch[2]) {
+      return {
+        xtreamUrl: hostUrl,
+        username: liveMatch[1],
+        password: liveMatch[2],
+      };
+    }
+  } catch (e) {
+    console.error('Error parsing M3U link:', e);
+  }
+  return null;
+}
+
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +68,8 @@ export default function DevicesPage() {
   // Modal Ativar / Editar
   const [modalOpen, setModalOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+  const [m3uInput, setM3uInput] = useState('');
+  const [m3uSuccess, setM3uSuccess] = useState(false);
   const [form, setForm] = useState({
     macAddress: '',
     deviceKey: '',
@@ -70,8 +115,26 @@ export default function DevicesPage() {
     }
   }, []);
 
+  const handleM3uChange = (val: string) => {
+    setM3uInput(val);
+    const parsed = parseM3uLink(val);
+    if (parsed && parsed.username && parsed.password) {
+      setForm((prev) => ({
+        ...prev,
+        xtreamUrl: parsed.xtreamUrl,
+        username: parsed.username,
+        password: parsed.password,
+      }));
+      setM3uSuccess(true);
+    } else {
+      setM3uSuccess(false);
+    }
+  };
+
   const openAddModal = () => {
     setEditingDevice(null);
+    setM3uInput('');
+    setM3uSuccess(false);
     setForm({
       macAddress: '',
       deviceKey: Math.floor(100000 + Math.random() * 900000).toString(),
@@ -87,6 +150,8 @@ export default function DevicesPage() {
 
   const openEditModal = (d: Device) => {
     setEditingDevice(d);
+    setM3uInput('');
+    setM3uSuccess(false);
     setForm({
       macAddress: d.macAddress,
       deviceKey: d.deviceKey,
@@ -177,7 +242,7 @@ export default function DevicesPage() {
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Ativação por MAC Address</h1>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: '0.9rem' }}>
-            Gerencie dispositivos estilo IBO Player. O cliente abre o app e você ativa remotamente pelo MAC.
+            Gerencie dispositivos estilo IBO Player. O cliente abre o app e você ativa remotamente pelo MAC ou colando o link M3U/HLS.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -325,10 +390,30 @@ export default function DevicesPage() {
       {/* Modal Ativar / Editar */}
       {modalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: '#161616', border: '1px solid #333', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '520px' }}>
+          <div style={{ background: '#161616', border: '1px solid #333', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: '1.3rem' }}>
               {editingDevice ? `Configurar MAC: ${editingDevice.macAddress}` : 'Cadastrar Novo Dispositivo'}
             </h2>
+
+            {/* Caixa M3U Rápido */}
+            <div style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#22c55e', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                <span>⚡ Ativação Rápida por Link M3U / HLS / SSIPTV:</span>
+              </div>
+              <input
+                type="text"
+                placeholder="Cole aqui o link M3U (ex: http://ultrakay.cc/get.php?username=... ou /p/user/pass/m3u)"
+                value={m3uInput}
+                onChange={(e) => handleM3uChange(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', background: '#111', border: '1px solid #22c55e', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
+              />
+              {m3uSuccess && (
+                <div style={{ marginTop: '6px', color: '#22c55e', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                  ✓ Link identificado! Servidor, usuário e senha preenchidos automaticamente abaixo.
+                </div>
+              )}
+            </div>
+
             <form onSubmit={handleSave}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', marginBottom: '12px' }}>
                 <div>

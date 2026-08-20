@@ -14,8 +14,51 @@ interface Client {
 }
 
 const EMPTY_FORM = {
-  username: '', password: '', name: '', xtreamUrl: '', expiresAt: '', notes: '', isActive: true,
+  username: '', password: '', name: '', xtreamUrl: 'http://observacaoonline.pro', expiresAt: '', notes: '', isActive: true,
 };
+
+// Parser inteligente para qualquer link M3U / HLS / SSIPTV
+function parseM3uLink(rawUrl: string) {
+  try {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return null;
+    
+    const parsed = new URL(trimmed.startsWith('http') ? trimmed : `http://${trimmed}`);
+    const hostUrl = `${parsed.protocol}//${parsed.host}`;
+    
+    // 1. M3U / HLS Completo: get.php?username=XXX&password=YYY...
+    if (parsed.searchParams.has('username') && parsed.searchParams.has('password')) {
+      return {
+        xtreamUrl: hostUrl,
+        username: parsed.searchParams.get('username') || '',
+        password: parsed.searchParams.get('password') || '',
+      };
+    }
+    
+    // 2. M3U / HLS / SSIPTV Curto: /p/USERNAME/PASSWORD/m3u ou /hls ou /ssiptv
+    const pMatch = parsed.pathname.match(/\/p\/([^\/]+)\/([^\/]+)/i);
+    if (pMatch && pMatch[1] && pMatch[2]) {
+      return {
+        xtreamUrl: hostUrl,
+        username: pMatch[1],
+        password: pMatch[2],
+      };
+    }
+    
+    // 3. Streams diretos: /live/USERNAME/PASSWORD/123.m3u8
+    const liveMatch = parsed.pathname.match(/\/(?:live|movie|series)\/([^\/]+)\/([^\/]+)/i);
+    if (liveMatch && liveMatch[1] && liveMatch[2]) {
+      return {
+        xtreamUrl: hostUrl,
+        username: liveMatch[1],
+        password: liveMatch[2],
+      };
+    }
+  } catch (e) {
+    console.error('Error parsing M3U link:', e);
+  }
+  return null;
+}
 
 function Badge({ active }: { active: boolean }) {
   return (
@@ -82,6 +125,9 @@ export default function ClientsPage() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
 
+  const [m3uInput, setM3uInput] = useState('');
+  const [m3uSuccess, setM3uSuccess] = useState(false);
+
   const [addForm, setAddForm] = useState({ ...EMPTY_FORM });
   const [editForm, setEditForm] = useState({ username: '', password: '', name: '', xtreamUrl: '', expiresAt: '', notes: '', isActive: true });
   const [bulkUrl, setBulkUrl] = useState('');
@@ -98,7 +144,7 @@ export default function ClientsPage() {
     try {
       const res = await fetch('/api/clients');
       const data = await res.json();
-      setClients(data);
+      setClients(Array.isArray(data) ? data : []);
     } catch {
       showToast('Erro ao carregar clientes');
     } finally {
@@ -109,282 +155,358 @@ export default function ClientsPage() {
   useEffect(() => { loadClients(); }, [loadClients]);
 
   useEffect(() => {
-    const q = search.toLowerCase();
-    setFiltered(q ? clients.filter(c =>
-      c.username.toLowerCase().includes(q) || (c.name || '').toLowerCase().includes(q)
-    ) : clients);
+    if (!search.trim()) {
+      setFiltered(clients);
+    } else {
+      const q = search.toLowerCase();
+      setFiltered(clients.filter(c =>
+        c.username.toLowerCase().includes(q) ||
+        (c.name && c.name.toLowerCase().includes(q))
+      ));
+    }
   }, [search, clients]);
+
+  const handleM3uAddChange = (val: string) => {
+    setM3uInput(val);
+    const parsed = parseM3uLink(val);
+    if (parsed && parsed.username && parsed.password) {
+      setAddForm(prev => ({
+        ...prev,
+        xtreamUrl: parsed.xtreamUrl,
+        username: parsed.username,
+        password: parsed.password,
+      }));
+      setM3uSuccess(true);
+    } else {
+      setM3uSuccess(false);
+    }
+  };
+
+  const handleM3uEditChange = (val: string) => {
+    setM3uInput(val);
+    const parsed = parseM3uLink(val);
+    if (parsed && parsed.username && parsed.password) {
+      setEditForm(prev => ({
+        ...prev,
+        xtreamUrl: parsed.xtreamUrl,
+        username: parsed.username,
+        password: parsed.password,
+      }));
+      setM3uSuccess(true);
+    } else {
+      setM3uSuccess(false);
+    }
+  };
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
   const selectAll = () => {
-    if (selected.size === filtered.length && filtered.length > 0) {
+    if (selected.size === filtered.length) {
       setSelected(new Set());
     } else {
       setSelected(new Set(filtered.map(c => c.id)));
     }
   };
 
-  const handleAdd = async () => {
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!addForm.username || !addForm.password || !addForm.xtreamUrl) {
-      showToast('Preencha usuario, senha e URL'); return;
+      showToast('Preencha os campos obrigatórios');
+      return;
     }
     setSaving(true);
     try {
       const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...addForm, expiresAt: addForm.expiresAt || null }),
+        body: JSON.stringify(addForm),
       });
-      if (!res.ok) { const d = await res.json(); showToast(d.error || 'Erro'); return; }
-      showToast('Cliente criado!');
+      if (!res.ok) throw new Error();
       setShowAddModal(false);
       setAddForm({ ...EMPTY_FORM });
+      setM3uInput('');
+      setM3uSuccess(false);
+      showToast('Cliente criado com sucesso!');
       loadClients();
-    } finally { setSaving(false); }
+    } catch {
+      showToast('Erro ao criar cliente');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const openEdit = (c: Client) => {
-    setEditClient(c);
-    setEditForm({
-      username: c.username, password: c.password, name: c.name || '',
-      xtreamUrl: c.xtreamUrl, isActive: c.isActive,
-      expiresAt: c.expiresAt ? c.expiresAt.slice(0, 10) : '',
-      notes: c.notes || '',
-    });
-    setShowEditModal(true);
-  };
-
-  const handleEdit = async () => {
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!editClient) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/clients/' + editClient.id, {
+      const res = await fetch(`/api/clients/${editClient.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editForm, expiresAt: editForm.expiresAt || null }),
+        body: JSON.stringify(editForm),
       });
-      if (!res.ok) { const d = await res.json(); showToast(d.error || 'Erro'); return; }
-      showToast('Atualizado!');
+      if (!res.ok) throw new Error();
       setShowEditModal(false);
+      setEditClient(null);
+      setM3uInput('');
+      setM3uSuccess(false);
+      showToast('Cliente atualizado!');
       loadClients();
-    } finally { setSaving(false); }
-  };
-
-  const toggleActive = async (c: Client) => {
-    await fetch('/api/clients/' + c.id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isActive: !c.isActive }),
-    });
-    loadClients();
+    } catch {
+      showToast('Erro ao atualizar cliente');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir este cliente?')) return;
-    await fetch('/api/clients/' + id, { method: 'DELETE' });
-    showToast('Excluido!');
-    loadClients();
+    if (!confirm('Deseja realmente excluir este cliente?')) return;
+    try {
+      await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      showToast('Cliente excluído');
+      loadClients();
+    } catch {
+      showToast('Erro ao excluir cliente');
+    }
   };
 
-  const handleBulkUpdate = async () => {
-    if (!bulkUrl) { showToast('Digite a nova URL'); return; }
+  const handleToggleActive = async (client: Client) => {
+    try {
+      await fetch(`/api/clients/${client.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...client, isActive: !client.isActive }),
+      });
+      loadClients();
+    } catch {
+      showToast('Erro ao alterar status');
+    }
+  };
+
+  const handleBulkUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkUrl.trim()) return;
     setSaving(true);
     try {
       const res = await fetch('/api/clients/bulk-update-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: Array.from(selected), xtreamUrl: bulkUrl }),
+        body: JSON.stringify({ ids: Array.from(selected), xtreamUrl: bulkUrl.trim() }),
       });
-      const d = await res.json();
-      showToast(d.updated + ' clientes atualizados!');
+      if (!res.ok) throw new Error();
       setShowBulkModal(false);
       setBulkUrl('');
       setSelected(new Set());
+      showToast('URLs atualizadas em massa!');
       loadClients();
-    } finally { setSaving(false); }
+    } catch {
+      showToast('Erro ao atualizar em massa');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div>
+      {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', background: '#22c55e', color: '#fff', padding: '12px 24px', borderRadius: '10px', fontWeight: 700, zIndex: 999, fontSize: '0.9rem', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#e50914', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, zIndex: 999 }}>
           {toast}
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Clientes</h1>
-          <p style={{ color: '#666', margin: '4px 0 0', fontSize: '0.88rem' }}>
-            {filtered.length} cliente{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-          </p>
+          <h1 style={{ color: '#fff', fontSize: '1.6rem', fontWeight: 800, margin: 0 }}>Gerenciador de Clientes</h1>
+          <p style={{ color: '#666', fontSize: '0.85rem', margin: '4px 0 0' }}>{clients.length} cliente(s) cadastrado(s)</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} style={btnRed}>+ Novo Cliente</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {selected.size > 0 && (
+            <button onClick={() => setShowBulkModal(true)} style={{ ...btnGray, borderColor: '#e50914', color: '#fff' }}>
+              Mudar URL em Massa ({selected.size})
+            </button>
+          )}
+          <button onClick={() => { setM3uInput(''); setM3uSuccess(false); setAddForm({ ...EMPTY_FORM }); setShowAddModal(true); }} style={btnRed}>
+            + Novo Cliente
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Busca */}
+      <div style={{ marginBottom: '18px' }}>
         <input
-          style={{ ...inputStyle, width: '280px', flex: 'none' }}
-          placeholder="Buscar por nome ou usuario..."
+          type="text"
+          placeholder="Buscar por nome ou usuário..."
           value={search}
           onChange={e => setSearch(e.target.value)}
+          style={{ ...inputStyle, maxWidth: '360px' }}
         />
-        <button onClick={selectAll} style={btnGray}>
-          {selected.size === filtered.length && filtered.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
-        </button>
-        {selected.size > 0 && (
-          <button onClick={() => setShowBulkModal(true)}
-            style={{ ...btnRed, background: '#7c3aed' }}>
-            Mudar URL em Massa ({selected.size})
-          </button>
-        )}
-        {selected.size > 0 && (
-          <span style={{ color: '#666', fontSize: '0.85rem' }}>{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
-        )}
       </div>
 
+      {/* Tabela */}
       <div style={{ background: '#111', border: '1px solid #222', borderRadius: '12px', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ color: '#666', textAlign: 'center', padding: '60px' }}>Carregando...</div>
-        ) : filtered.length === 0 ? (
-          <div style={{ color: '#666', textAlign: 'center', padding: '60px' }}>
-            {search ? 'Nenhum cliente encontrado para essa busca' : 'Nenhum cliente cadastrado'}
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.87rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #222' }}>
-                  <th style={{ color: '#555', padding: '14px 16px', textAlign: 'left', width: '40px' }}></th>
-                  <th style={{ color: '#555', padding: '14px 16px', textAlign: 'left' }}>Nome / Usuario</th>
-                  <th style={{ color: '#555', padding: '14px 16px', textAlign: 'left' }}>Senha</th>
-                  <th style={{ color: '#555', padding: '14px 16px', textAlign: 'left' }}>URL Xtream</th>
-                  <th style={{ color: '#555', padding: '14px 16px', textAlign: 'left' }}>Status</th>
-                  <th style={{ color: '#555', padding: '14px 16px', textAlign: 'left' }}>Expira</th>
-                  <th style={{ color: '#555', padding: '14px 16px', textAlign: 'center' }}>Acoes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(c => (
-                  <tr key={c.id}
-                    style={{ borderBottom: '1px solid #1a1a1a', background: selected.has(c.id) ? '#180a0a' : 'transparent' }}>
-                    <td style={{ padding: '12px 16px' }}>
-                      <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#e50914' }} />
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ color: '#fff', fontWeight: 600 }}>{c.name || '—'}</div>
-                      <div style={{ color: '#666', fontSize: '0.8rem' }}>@{c.username}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: '#888', fontFamily: 'monospace' }}>{c.password}</td>
-                    <td style={{ padding: '12px 16px', color: '#888', maxWidth: '180px' }}>
-                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.xtreamUrl}>
-                        {c.xtreamUrl}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}><Badge active={c.isActive} /></td>
-                    <td style={{ padding: '12px 16px', color: '#888', whiteSpace: 'nowrap' }}>
-                      {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('pt-BR') : '—'}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                        <button onClick={() => openEdit(c)}
-                          style={{ background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                          Editar
-                        </button>
-                        <button onClick={() => toggleActive(c)}
-                          style={{ background: c.isActive ? '#92400e' : '#166534', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                          {c.isActive ? 'Desativar' : 'Ativar'}
-                        </button>
-                        <button onClick={() => handleDelete(c.id)}
-                          style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ccc', fontSize: '0.88rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #222', background: '#161616', textAlign: 'left' }}>
+              <th style={{ padding: '14px 16px', width: '36px' }}>
+                <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={selectAll} />
+              </th>
+              <th style={{ padding: '14px 16px', color: '#888', fontWeight: 600 }}>USUÁRIO</th>
+              <th style={{ padding: '14px 16px', color: '#888', fontWeight: 600 }}>NOME</th>
+              <th style={{ padding: '14px 16px', color: '#888', fontWeight: 600 }}>URL XTREAM</th>
+              <th style={{ padding: '14px 16px', color: '#888', fontWeight: 600 }}>STATUS</th>
+              <th style={{ padding: '14px 16px', color: '#888', fontWeight: 600 }}>VENCIMENTO</th>
+              <th style={{ padding: '14px 16px', color: '#888', fontWeight: 600, textAlign: 'right' }}>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#555' }}>Carregando...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#555' }}>Nenhum cliente encontrado</td></tr>
+            ) : filtered.map(c => (
+              <tr key={c.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
+                <td style={{ padding: '14px 16px' }}>
+                  <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} />
+                </td>
+                <td style={{ padding: '14px 16px', color: '#fff', fontWeight: 700 }}>{c.username}</td>
+                <td style={{ padding: '14px 16px' }}>{c.name || '-'}</td>
+                <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontSize: '0.8rem', color: '#888' }}>{c.xtreamUrl}</td>
+                <td style={{ padding: '14px 16px' }}>
+                  <button onClick={() => handleToggleActive(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    <Badge active={c.isActive} />
+                  </button>
+                </td>
+                <td style={{ padding: '14px 16px', color: '#888' }}>
+                  {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('pt-BR') : '-'}
+                </td>
+                <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                  <button
+                    onClick={() => {
+                      setEditClient(c);
+                      setEditForm({
+                        username: c.username, password: c.password,
+                        name: c.name || '', xtreamUrl: c.xtreamUrl,
+                        expiresAt: c.expiresAt ? c.expiresAt.split('T')[0] : '',
+                        notes: c.notes || '', isActive: c.isActive,
+                      });
+                      setM3uInput('');
+                      setM3uSuccess(false);
+                      setShowEditModal(true);
+                    }}
+                    style={{ ...btnGray, padding: '6px 12px', fontSize: '0.8rem', marginRight: '6px' }}
+                  >
+                    Editar
+                  </button>
+                  <button onClick={() => handleDelete(c.id)} style={{ ...btnGray, padding: '6px 10px', fontSize: '0.8rem', color: '#f87171' }}>
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* ADD MODAL */}
+      {/* Modal Add */}
       {showAddModal && (
         <ModalOverlay onClose={() => setShowAddModal(false)}>
           <ModalTitle>Novo Cliente</ModalTitle>
-          <FormField label="Usuario *" value={addForm.username} onChange={v => setAddForm(f => ({ ...f, username: v }))} placeholder="usuario123" />
-          <FormField label="Senha *" value={addForm.password} onChange={v => setAddForm(f => ({ ...f, password: v }))} placeholder="senha123" />
-          <FormField label="Nome" value={addForm.name} onChange={v => setAddForm(f => ({ ...f, name: v }))} placeholder="Joao Silva" />
-          <FormField label="URL Xtream *" value={addForm.xtreamUrl} onChange={v => setAddForm(f => ({ ...f, xtreamUrl: v }))} placeholder="http://provedor.com:80" />
-          <FormField label="Expira em" value={addForm.expiresAt} onChange={v => setAddForm(f => ({ ...f, expiresAt: v }))} type="date" />
-          <div style={{ marginBottom: '14px' }}>
-            <label style={labelStyle}>Notas</label>
-            <textarea style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }}
-              value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} placeholder="Observacoes..." />
+
+          {/* Parser M3U */}
+          <div style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+            <div style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '0.82rem', marginBottom: '5px' }}>
+              ⚡ Ativação Rápida por Link M3U / HLS / SSIPTV:
+            </div>
+            <input
+              type="text"
+              placeholder="Cole o link M3U aqui..."
+              value={m3uInput}
+              onChange={e => handleM3uAddChange(e.target.value)}
+              style={{ ...inputStyle, border: '1px solid #22c55e', fontSize: '0.82rem' }}
+            />
+            {m3uSuccess && (
+              <div style={{ marginTop: '5px', color: '#22c55e', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                ✓ Link identificado! Campos preenchidos automaticamente.
+              </div>
+            )}
           </div>
-          <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input type="checkbox" id="addActive" checked={addForm.isActive}
-              onChange={e => setAddForm(f => ({ ...f, isActive: e.target.checked }))}
-              style={{ width: '16px', height: '16px', accentColor: '#e50914' }} />
-            <label htmlFor="addActive" style={{ color: '#aaa', fontSize: '0.88rem' }}>Conta ativa</label>
-          </div>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-            <button onClick={() => setShowAddModal(false)} style={btnGray} disabled={saving}>Cancelar</button>
-            <button onClick={handleAdd} style={btnRed} disabled={saving}>{saving ? 'Salvando...' : 'Criar Cliente'}</button>
-          </div>
+
+          <form onSubmit={handleAdd}>
+            <FormField label="Usuário *" value={addForm.username} onChange={v => setAddForm({ ...addForm, username: v })} placeholder="usuario" />
+            <FormField label="Senha *" value={addForm.password} onChange={v => setAddForm({ ...addForm, password: v })} type="text" placeholder="senha" />
+            <FormField label="Nome do Cliente" value={addForm.name} onChange={v => setAddForm({ ...addForm, name: v })} placeholder="ex: João Silva" />
+            <FormField label="URL do Servidor Xtream *" value={addForm.xtreamUrl} onChange={v => setAddForm({ ...addForm, xtreamUrl: v })} placeholder="http://servidor.pro" />
+            <FormField label="Data de Vencimento" value={addForm.expiresAt} onChange={v => setAddForm({ ...addForm, expiresAt: v })} type="date" />
+            <FormField label="Observações" value={addForm.notes} onChange={v => setAddForm({ ...addForm, notes: v })} placeholder="Plano mensal, etc." />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+              <button type="button" onClick={() => setShowAddModal(false)} style={btnGray}>Cancelar</button>
+              <button type="submit" disabled={saving} style={btnRed}>{saving ? 'Salvando...' : 'Criar Cliente'}</button>
+            </div>
+          </form>
         </ModalOverlay>
       )}
 
-      {/* EDIT MODAL */}
-      {showEditModal && editClient && (
+      {/* Modal Edit */}
+      {showEditModal && (
         <ModalOverlay onClose={() => setShowEditModal(false)}>
-          <ModalTitle>Editar: {editClient.name || editClient.username}</ModalTitle>
-          <FormField label="Usuario" value={editForm.username} onChange={v => setEditForm(f => ({ ...f, username: v }))} />
-          <FormField label="Senha" value={editForm.password} onChange={v => setEditForm(f => ({ ...f, password: v }))} />
-          <FormField label="Nome" value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} />
-          <FormField label="URL Xtream" value={editForm.xtreamUrl} onChange={v => setEditForm(f => ({ ...f, xtreamUrl: v }))} />
-          <FormField label="Expira em" value={editForm.expiresAt} onChange={v => setEditForm(f => ({ ...f, expiresAt: v }))} type="date" />
-          <div style={{ marginBottom: '14px' }}>
-            <label style={labelStyle}>Notas</label>
-            <textarea style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }}
-              value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} />
+          <ModalTitle>Editar Cliente</ModalTitle>
+
+          {/* Parser M3U */}
+          <div style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+            <div style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '0.82rem', marginBottom: '5px' }}>
+              ⚡ Ativação Rápida por Link M3U / HLS / SSIPTV:
+            </div>
+            <input
+              type="text"
+              placeholder="Cole o link M3U para substituir..."
+              value={m3uInput}
+              onChange={e => handleM3uEditChange(e.target.value)}
+              style={{ ...inputStyle, border: '1px solid #22c55e', fontSize: '0.82rem' }}
+            />
+            {m3uSuccess && (
+              <div style={{ marginTop: '5px', color: '#22c55e', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                ✓ Link identificado! Campos preenchidos automaticamente.
+              </div>
+            )}
           </div>
-          <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input type="checkbox" id="editActive" checked={editForm.isActive}
-              onChange={e => setEditForm(f => ({ ...f, isActive: e.target.checked }))}
-              style={{ width: '16px', height: '16px', accentColor: '#e50914' }} />
-            <label htmlFor="editActive" style={{ color: '#aaa', fontSize: '0.88rem' }}>Conta ativa</label>
-          </div>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-            <button onClick={() => setShowEditModal(false)} style={btnGray} disabled={saving}>Cancelar</button>
-            <button onClick={handleEdit} style={btnRed} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
-          </div>
+
+          <form onSubmit={handleEdit}>
+            <FormField label="Usuário *" value={editForm.username} onChange={v => setEditForm({ ...editForm, username: v })} />
+            <FormField label="Senha *" value={editForm.password} onChange={v => setEditForm({ ...editForm, password: v })} type="text" />
+            <FormField label="Nome do Cliente" value={editForm.name} onChange={v => setEditForm({ ...editForm, name: v })} />
+            <FormField label="URL do Servidor Xtream *" value={editForm.xtreamUrl} onChange={v => setEditForm({ ...editForm, xtreamUrl: v })} />
+            <FormField label="Data de Vencimento" value={editForm.expiresAt} onChange={v => setEditForm({ ...editForm, expiresAt: v })} type="date" />
+            <FormField label="Observações" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+              <button type="button" onClick={() => setShowEditModal(false)} style={btnGray}>Cancelar</button>
+              <button type="submit" disabled={saving} style={btnRed}>{saving ? 'Salvando...' : 'Salvar Alterações'}</button>
+            </div>
+          </form>
         </ModalOverlay>
       )}
 
-      {/* BULK URL MODAL */}
+      {/* Modal Bulk */}
       {showBulkModal && (
         <ModalOverlay onClose={() => setShowBulkModal(false)}>
           <ModalTitle>Mudar URL em Massa</ModalTitle>
-          <p style={{ color: '#888', fontSize: '0.88rem', marginBottom: '20px' }}>
-            Aplicar nova URL para <strong style={{ color: '#fff' }}>{selected.size}</strong> cliente{selected.size !== 1 ? 's' : ''} selecionado{selected.size !== 1 ? 's' : ''}.
+          <p style={{ color: '#888', fontSize: '0.88rem', margin: '0 0 20px' }}>
+            Atualizando URL para <strong>{selected.size}</strong> cliente(s) selecionado(s).
           </p>
-          <FormField label="Nova URL Xtream" value={bulkUrl} onChange={setBulkUrl} placeholder="http://novo-provedor.com:80" />
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
-            <button onClick={() => setShowBulkModal(false)} style={btnGray} disabled={saving}>Cancelar</button>
-            <button onClick={handleBulkUpdate} style={{ ...btnRed, background: '#7c3aed' }} disabled={saving}>
-              {saving ? 'Aplicando...' : 'Aplicar a Todos'}
-            </button>
-          </div>
+          <form onSubmit={handleBulkUpdate}>
+            <FormField label="Nova URL Xtream *" value={bulkUrl} onChange={setBulkUrl} placeholder="http://novo-servidor.pro" />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+              <button type="button" onClick={() => setShowBulkModal(false)} style={btnGray}>Cancelar</button>
+              <button type="submit" disabled={saving} style={btnRed}>{saving ? 'Atualizando...' : 'Atualizar Todos'}</button>
+            </div>
+          </form>
         </ModalOverlay>
       )}
     </div>
