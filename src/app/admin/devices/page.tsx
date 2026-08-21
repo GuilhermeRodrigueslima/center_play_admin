@@ -65,6 +65,10 @@ export default function DevicesPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
 
+  // Medidor de latência e velocidade dos servidores
+  const [latencies, setLatencies] = useState<Record<string, { latencyMs: number; statusCategory: string; error?: string }>>({});
+  const [testingLatency, setTestingLatency] = useState(false);
+
   // Modal Ativar / Editar
   const [modalOpen, setModalOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
@@ -114,6 +118,28 @@ export default function DevicesPage() {
       }
     }
   }, []);
+
+  const testAllServers = async () => {
+    setTestingLatency(true);
+    const newLatencies: Record<string, any> = { ...latencies };
+    const uniqueUrls = Array.from(new Set(devices.map((d) => d.xtreamUrl).filter(Boolean))) as string[];
+
+    for (const u of uniqueUrls) {
+      try {
+        const res = await fetch('/api/server-health', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: u }),
+        });
+        const data = await res.json();
+        newLatencies[u] = data;
+      } catch (_) {
+        newLatencies[u] = { online: false, latencyMs: 6000, statusCategory: 'down', error: 'Falha' };
+      }
+    }
+    setLatencies(newLatencies);
+    setTestingLatency(false);
+  };
 
   const handleM3uChange = (val: string) => {
     setM3uInput(val);
@@ -242,10 +268,29 @@ export default function DevicesPage() {
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Ativação por MAC Address</h1>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: '0.9rem' }}>
-            Gerencie dispositivos estilo IBO Player. O cliente abre o app e você ativa remotamente pelo MAC ou colando o link M3U/HLS.
+            Gerencie dispositivos estilo IBO Player com monitor de velocidade e latência em tempo real.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={testAllServers}
+            disabled={testingLatency || devices.length === 0}
+            style={{
+              background: '#1e293b',
+              border: '1px solid #3b82f6',
+              color: '#60a5fa',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            {testingLatency ? '⏳ Testando Velocidade...' : '⚡ Testar Latência dos Servidores'}
+          </button>
+
           {selectedIds.length > 0 && (
             <button
               onClick={() => setBulkModalOpen(true)}
@@ -289,7 +334,7 @@ export default function DevicesPage() {
               <th style={{ padding: '14px 16px' }}>MAC Address / Key</th>
               <th style={{ padding: '14px 16px' }}>Cliente / Aparelho</th>
               <th style={{ padding: '14px 16px' }}>Credenciais IPTV</th>
-              <th style={{ padding: '14px 16px' }}>Servidor URL</th>
+              <th style={{ padding: '14px 16px' }}>Servidor URL / Latência</th>
               <th style={{ padding: '14px 16px' }}>Status</th>
               <th style={{ padding: '14px 16px', textAlign: 'right' }}>Ações</th>
             </tr>
@@ -310,6 +355,8 @@ export default function DevicesPage() {
             ) : (
               filtered.map((d) => {
                 const isActivated = Boolean(d.xtreamUrl && d.username && d.password);
+                const serverLat = d.xtreamUrl ? latencies[d.xtreamUrl] : null;
+
                 return (
                   <tr key={d.id} style={{ borderBottom: '1px solid #1f1f1f' }}>
                     <td style={{ padding: '14px 16px' }}>
@@ -344,7 +391,31 @@ export default function DevicesPage() {
                       )}
                     </td>
                     <td style={{ padding: '14px 16px', color: '#999', fontSize: '0.85rem' }}>
-                      {d.xtreamUrl || '-'}
+                      <div style={{ fontFamily: 'monospace' }}>{d.xtreamUrl || '-'}</div>
+                      {serverLat && (
+                        <div style={{ marginTop: '4px' }}>
+                          {serverLat.statusCategory === 'excellent' && (
+                            <span style={{ color: '#22c55e', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(34,197,94,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                              🟢 {serverLat.latencyMs}ms (Super Rápido)
+                            </span>
+                          )}
+                          {serverLat.statusCategory === 'good' && (
+                            <span style={{ color: '#eab308', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(234,179,8,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                              🟡 {serverLat.latencyMs}ms (Estável)
+                            </span>
+                          )}
+                          {serverLat.statusCategory === 'slow' && (
+                            <span style={{ color: '#f97316', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(249,115,22,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                              🔴 {serverLat.latencyMs}ms (Lento / Travando)
+                            </span>
+                          )}
+                          {serverLat.statusCategory === 'down' && (
+                            <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(239,68,68,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                              ❌ Offline ({serverLat.error || 'Falha'})
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <button
@@ -369,7 +440,7 @@ export default function DevicesPage() {
                           onClick={() => openEditModal(d)}
                           style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                         >
-                          {isActivated ? '✏️ Editar' : '⚡ Ativar Lista'}
+                          {isActivated ? '✏️ Trocar / Editar' : '⚡ Ativar Lista'}
                         </button>
                         <button
                           onClick={() => handleDelete(d.id)}
