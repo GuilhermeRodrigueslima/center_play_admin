@@ -10,13 +10,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const device = await prisma.device.update({
       where: { id },
       data: {
-        name,
-        xtreamUrl,
-        username,
-        password,
-        isActive,
+        name: name !== undefined ? name : undefined,
+        xtreamUrl: xtreamUrl !== undefined ? xtreamUrl : undefined,
+        username: username !== undefined ? username : undefined,
+        password: password !== undefined ? password : undefined,
+        isActive: isActive !== undefined ? isActive : undefined,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        notes,
+        notes: notes !== undefined ? notes : undefined,
       },
     });
 

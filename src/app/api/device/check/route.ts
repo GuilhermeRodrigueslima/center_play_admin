@@ -15,48 +15,68 @@ export async function POST(req: Request) {
 
     const cleanMac = macAddress.toUpperCase().trim();
 
-    const device = await prisma.device.findUnique({
+    let device = await prisma.device.findUnique({
       where: { macAddress: cleanMac },
     });
 
     if (!device) {
-      return NextResponse.json({
-        activated: false,
-        error: 'Dispositivo ainda não registrado.',
-      }, { status: 404 });
+      // Auto-cadastra o novo aparelho para aparecer IMEDIATAMENTE no painel como "Aguardando Lista"
+      device = await prisma.device.create({
+        data: {
+          macAddress: cleanMac,
+          deviceKey: deviceKey || Math.floor(100000 + Math.random() * 900000).toString(),
+          name: 'Smart TV / TV Box',
+          isActive: true,
+        },
+      });
+    } else {
+      // Atualiza o timestamp de visualizacao e a key
+      await prisma.device.update({
+        where: { id: device.id },
+        data: {
+          lastSeenAt: new Date(),
+          deviceKey: deviceKey || device.deviceKey,
+        },
+      });
     }
-
-    // Atualiza o timestamp de visualizacao
-    await prisma.device.update({
-      where: { id: device.id },
-      data: { lastSeenAt: new Date() },
-    });
 
     if (!device.isActive) {
       return NextResponse.json({
         activated: false,
-        error: 'Dispositivo inativo ou bloqueado pelo administrador.',
-      }, { status: 403 });
+        macAddress: device.macAddress,
+        deviceKey: device.deviceKey,
+        error: 'Dispositivo bloqueado pelo administrador.',
+      });
     }
 
     if (device.expiresAt && new Date(device.expiresAt) < new Date()) {
       return NextResponse.json({
         activated: false,
-        error: 'Assinatura expirada. Contate o suporte para renovar.',
-      }, { status: 403 });
+        macAddress: device.macAddress,
+        deviceKey: device.deviceKey,
+        error: 'Assinatura expirada. Contate o suporte.',
+      });
     }
 
-    const isConfigured = Boolean(device.xtreamUrl && device.username && device.password);
+    const isConfigured = Boolean(
+      device.xtreamUrl &&
+      device.username &&
+      device.password &&
+      device.xtreamUrl.trim().length > 0 &&
+      device.username.trim().length > 0 &&
+      device.password.trim().length > 0
+    );
 
     return NextResponse.json({
       activated: isConfigured,
       macAddress: device.macAddress,
       deviceKey: device.deviceKey,
-      xtreamUrl: device.xtreamUrl,
-      username: device.username,
-      password: device.password,
-      name: device.name,
-      expiresAt: device.expiresAt,
+      xtreamUrl: device.xtreamUrl || null,
+      username: device.username || null,
+      password: device.password || null,
+      name: device.name || null,
+      expiresAt: device.expiresAt || null,
+      statusMessage: isConfigured ? 'Ativado' : 'Aguardando Lista',
     });
   } catch (error) {
     console.error('Error in /api/device/check:', error);

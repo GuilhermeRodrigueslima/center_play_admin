@@ -10,46 +10,39 @@ export async function POST(req: Request) {
       name?: string;
     };
 
-    if (!macAddress || !deviceKey) {
-      return NextResponse.json({ error: 'macAddress and deviceKey are required' }, { status: 400 });
+    if (!macAddress) {
+      return NextResponse.json({ error: 'macAddress is required' }, { status: 400 });
     }
 
     const cleanMac = macAddress.toUpperCase().trim();
+    const safeKey = deviceKey || Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Upsert o dispositivo para manter registrado
+    // Upsert o dispositivo para manter registrado e atualizado
     const device = await prisma.device.upsert({
       where: { macAddress: cleanMac },
       update: {
-        deviceKey,
+        deviceKey: safeKey,
         lastSeenAt: new Date(),
       },
       create: {
         macAddress: cleanMac,
-        deviceKey,
+        deviceKey: safeKey,
         name: name || 'Smart TV / TV Box',
+        isActive: true,
       },
     });
 
     const isConfigured = Boolean(
-      device.xtreamUrl && device.username && device.password && device.isActive
+      device.xtreamUrl &&
+      device.username &&
+      device.password &&
+      device.xtreamUrl.trim().length > 0 &&
+      device.username.trim().length > 0 &&
+      device.password.trim().length > 0
     );
 
-    if (device.expiresAt && new Date(device.expiresAt) < new Date()) {
-      return NextResponse.json({
-        activated: false,
-        error: 'Assinatura expirada. Contate o suporte para renovar.',
-      });
-    }
-
-    if (!device.isActive) {
-      return NextResponse.json({
-        activated: false,
-        error: 'Dispositivo bloqueado ou inativo.',
-      });
-    }
-
     return NextResponse.json({
-      activated: isConfigured,
+      activated: isConfigured && device.isActive,
       macAddress: device.macAddress,
       deviceKey: device.deviceKey,
       xtreamUrl: device.xtreamUrl || null,
@@ -57,6 +50,7 @@ export async function POST(req: Request) {
       password: device.password || null,
       name: device.name || null,
       expiresAt: device.expiresAt || null,
+      isActive: device.isActive,
     });
   } catch (error) {
     console.error('Error in /api/device/register:', error);

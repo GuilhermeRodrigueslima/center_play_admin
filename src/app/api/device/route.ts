@@ -25,26 +25,29 @@ export async function POST(req: Request) {
     }
 
     const cleanMac = macAddress.toUpperCase().trim();
+    const safeKey = deviceKey || Math.floor(100000 + Math.random() * 900000).toString();
 
     const device = await prisma.device.upsert({
       where: { macAddress: cleanMac },
       update: {
-        name: name || undefined,
-        xtreamUrl: xtreamUrl || undefined,
-        username: username || undefined,
-        password: password || undefined,
+        name: name !== undefined ? name : undefined,
+        xtreamUrl: xtreamUrl !== undefined ? xtreamUrl : undefined,
+        username: username !== undefined ? username : undefined,
+        password: password !== undefined ? password : undefined,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        notes: notes || undefined,
+        notes: notes !== undefined ? notes : undefined,
+        isActive: true,
       },
       create: {
         macAddress: cleanMac,
-        deviceKey: deviceKey || Math.floor(100000 + Math.random() * 900000).toString(),
-        name: name || 'Dispositivo TV',
+        deviceKey: safeKey,
+        name: name || 'Smart TV / TV Box',
         xtreamUrl: xtreamUrl || '',
         username: username || '',
         password: password || '',
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         notes: notes || '',
+        isActive: true,
       },
     });
 
