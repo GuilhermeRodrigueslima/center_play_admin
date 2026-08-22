@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model AdminUser {
@@ -42,6 +42,7 @@ model Device {
   lastSeenAt  DateTime? @default(now())
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  sessions    DeviceSession[]
 }
 
 model AppSettings {
@@ -49,4 +50,14 @@ model AppSettings {
   xtreamUrl     String
   globalMessage String?
   updatedAt     DateTime @updatedAt
+}
+
+model DeviceSession {
+  id          String   @id @default(cuid())
+  deviceId    String
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  ping        Int?
+  lastPingAt  DateTime @default(now())
+  connectedAt DateTime @default(now())
+  status      String   @default("online")
 }

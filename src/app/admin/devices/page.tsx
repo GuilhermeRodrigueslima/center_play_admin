@@ -14,6 +14,13 @@ interface Device {
   expiresAt: string | null;
   lastSeenAt: string | null;
   notes: string | null;
+  sessions?: {
+    id: string;
+    ping: number | null;
+    lastPingAt: string;
+    connectedAt: string;
+    status: string;
+  }[];
 }
 
 // Parser inteligente para qualquer link M3U / HLS / SSIPTV
@@ -64,6 +71,7 @@ export default function DevicesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+  const [onlineSessions, setOnlineSessions] = useState<any[]>([]);
 
   // Medidor de latência e velocidade dos servidores
   const [latencies, setLatencies] = useState<Record<string, { latencyMs: number; statusCategory: string; error?: string }>>({});
@@ -91,9 +99,15 @@ export default function DevicesPage() {
 
   const fetchDevices = async () => {
     try {
-      const res = await fetch('/api/device');
-      const data = await res.json();
-      if (Array.isArray(data)) setDevices(data);
+      const [devicesRes, telemetryRes] = await Promise.all([
+        fetch('/api/device'),
+        fetch('/api/telemetry')
+      ]);
+      const devicesData = await devicesRes.json();
+      const telemetryData = await telemetryRes.json();
+      
+      if (Array.isArray(devicesData)) setDevices(devicesData);
+      if (Array.isArray(telemetryData)) setOnlineSessions(telemetryData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -103,6 +117,11 @@ export default function DevicesPage() {
 
   useEffect(() => {
     fetchDevices();
+    const interval = setInterval(fetchDevices, 30000); // Atualiza a cada 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const urlMac = params.get('mac');
@@ -335,6 +354,7 @@ export default function DevicesPage() {
               <th style={{ padding: '14px 16px' }}>Cliente / Aparelho</th>
               <th style={{ padding: '14px 16px' }}>Credenciais IPTV</th>
               <th style={{ padding: '14px 16px' }}>Servidor URL / Latência</th>
+              <th style={{ padding: '14px 16px' }}>Online / Latência App</th>
               <th style={{ padding: '14px 16px' }}>Status</th>
               <th style={{ padding: '14px 16px', textAlign: 'right' }}>Ações</th>
             </tr>
@@ -342,13 +362,13 @@ export default function DevicesPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: '#888' }}>
+                <td colSpan={8} style={{ padding: '30px', textAlign: 'center', color: '#888' }}>
                   Carregando dispositivos...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+                <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
                   Nenhum dispositivo encontrado. Quando um cliente abrir o app, o MAC aparecerá aqui automaticamente!
                 </td>
               </tr>
@@ -356,6 +376,7 @@ export default function DevicesPage() {
               filtered.map((d) => {
                 const isActivated = Boolean(d.xtreamUrl && d.username && d.password);
                 const serverLat = d.xtreamUrl ? latencies[d.xtreamUrl] : null;
+                const activeSession = onlineSessions.find(s => s.deviceId === d.id);
 
                 return (
                   <tr key={d.id} style={{ borderBottom: '1px solid #1f1f1f' }}>
@@ -396,23 +417,49 @@ export default function DevicesPage() {
                         <div style={{ marginTop: '4px' }}>
                           {serverLat.statusCategory === 'excellent' && (
                             <span style={{ color: '#22c55e', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(34,197,94,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              🟢 {serverLat.latencyMs}ms (Super Rápido)
+                              🌐 {serverLat.latencyMs}ms (SR)
                             </span>
                           )}
                           {serverLat.statusCategory === 'good' && (
                             <span style={{ color: '#eab308', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(234,179,8,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              🟡 {serverLat.latencyMs}ms (Estável)
+                              🌐 {serverLat.latencyMs}ms (OK)
                             </span>
                           )}
                           {serverLat.statusCategory === 'slow' && (
                             <span style={{ color: '#f97316', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(249,115,22,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              🔴 {serverLat.latencyMs}ms (Lento / Travando)
+                              🌐 {serverLat.latencyMs}ms (LE)
                             </span>
                           )}
                           {serverLat.statusCategory === 'down' && (
                             <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(239,68,68,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              ❌ Offline ({serverLat.error || 'Falha'})
+                              ❌ OFF
                             </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      {activeSession ? (
+                        <div>
+                          <span style={{ color: '#22c55e', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            🟢 ONLINE
+                          </span>
+                          <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px' }}>
+                            Ping: <span style={{ color: activeSession.ping < 100 ? '#22c55e' : activeSession.ping < 300 ? '#eab308' : '#ef4444' }}>
+                              {activeSession.ping}ms
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#666' }}>
+                            Desde: {new Date(activeSession.connectedAt).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span style={{ color: '#666' }}>OFFLINE</span>
+                          {d.lastSeenAt && (
+                            <div style={{ fontSize: '0.7rem', color: '#444' }}>
+                              Visto: {new Date(d.lastSeenAt).toLocaleDateString()}
+                            </div>
                           )}
                         </div>
                       )}
