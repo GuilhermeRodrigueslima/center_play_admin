@@ -350,8 +350,70 @@ export default function ClientsPage() {
         />
       </div>
 
-      {/* Tabela */}
-      <div className="table-container" style={{ background: '#111', border: '1px solid #222', borderRadius: '12px', overflowX: 'auto' }}>
+      {/* Visão Mobile: Cards Elegantes */}
+      <div className="md:hidden space-y-3.5 mb-8">
+        {loading ? (
+          <div className="p-8 text-center text-gray-500 text-sm">Carregando clientes...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm bg-[#141414] rounded-xl border border-[#222]">
+            Nenhum cliente encontrado
+          </div>
+        ) : (
+          filtered.map(c => (
+            <div key={c.id} className="bg-[#141414] border border-[#222] rounded-xl p-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="font-bold text-white text-base">{c.username}</div>
+                  <div className="text-xs text-gray-400 font-medium">{c.name || 'Sem nome'}</div>
+                </div>
+                <button onClick={() => handleToggleActive(c)}>
+                  <Badge active={c.isActive} />
+                </button>
+              </div>
+
+              <div className="bg-[#1a1a1a] rounded-lg p-2.5 text-xs space-y-1 text-gray-300">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Servidor:</span>
+                  <span className="font-mono text-[11px] truncate max-w-[180px] text-gray-400">{c.xtreamUrl}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Vencimento:</span>
+                  <span>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('pt-BR') : 'Sem validade'}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    setEditClient(c);
+                    setEditForm({
+                      username: c.username, password: c.password,
+                      name: c.name || '', xtreamUrl: c.xtreamUrl,
+                      expiresAt: c.expiresAt ? c.expiresAt.split('T')[0] : '',
+                      notes: c.notes || '', isActive: c.isActive,
+                    });
+                    setM3uInput('');
+                    setM3uSuccess(false);
+                    setShowEditModal(true);
+                  }}
+                  className="flex-1 bg-[#2563eb] hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  onClick={() => handleDelete(c.id)}
+                  className="bg-[#222] hover:bg-red-950/60 text-red-400 border border-[#333] px-3 py-2 rounded-lg text-xs"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Visão Desktop: Tabela Completa */}
+      <div className="hidden md:block table-container" style={{ background: '#111', border: '1px solid #222', borderRadius: '12px', overflowX: 'auto' }}>
         <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', color: '#ccc', fontSize: '0.88rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #222', background: '#161616', textAlign: 'left' }}>

@@ -7,102 +7,119 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
 
-  // Fecha a sidebar ao navegar no mobile
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
 
+  const navItems = [
+    { href: '/admin', label: 'Dashboard', icon: '📊' },
+    { href: '/admin/devices', label: 'Ativação MAC', icon: '📺' },
+    { href: '/admin/clients', label: 'Clientes', icon: '👥' },
+    { href: '/admin/settings', label: 'Configurações', icon: '⚙️' },
+  ];
+
   return (
-    <div className="min-h-screen flex" style={{ background: '#0a0a0a', fontFamily: 'sans-serif' }}>
-      {/* Overlay para fechar sidebar no mobile */}
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#0a0a0a] text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           onClick={() => setIsSidebarOpen(false)}
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 45 }}
+          className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-sm"
         />
       )}
 
-      {/* Sidebar */}
-      <aside 
-        className="admin-sidebar-transition"
-        style={{ 
-          width: '240px', 
-          minHeight: '100vh', 
-          background: '#111', 
-          borderRight: '1px solid #222', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          zIndex: 50,
-          transform: typeof window !== 'undefined' && isSidebarOpen ? 'translateX(0)' : (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'translateX(-100%)' : 'translateX(0)')
-        }}
+      {/* Sidebar Desktop & Drawer Mobile */}
+      <aside
+        className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-[#121212] border-r border-[#222] z-50 flex flex-col transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
       >
-        <div style={{ padding: '24px 20px 16px', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="p-5 border-b border-[#222] flex items-center justify-between">
           <div>
-            <div style={{ color: '#e50914', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '1px' }}>CENTER PLAY</div>
-            <div style={{ color: '#666', fontSize: '0.7rem', marginTop: '2px', letterSpacing: '2px', textTransform: 'uppercase' }}>Admin Panel</div>
+            <div className="text-[#e50914] text-xl font-black tracking-wider">CENTER PLAY</div>
+            <div className="text-[#777] text-[10px] tracking-widest uppercase font-semibold">Painel Admin</div>
           </div>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden text-gray-400 hover:text-white p-2 text-xl"
+          >
+            ✕
+          </button>
         </div>
-        <nav style={{ flex: 1, padding: '16px 0' }}>
-          <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 20px', color: pathname === '/admin' ? '#e50914' : '#ccc', textDecoration: 'none', fontSize: '0.9rem', fontWeight: pathname === '/admin' ? 'bold' : 'normal', background: pathname === '/admin' ? 'rgba(229,9,20,0.05)' : 'transparent' }}>
-            <span style={{ fontSize: '1.1rem' }}>📊</span> Dashboard
-          </Link>
-          <Link href="/admin/devices" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 20px', color: pathname === '/admin/devices' ? '#e50914' : '#ccc', textDecoration: 'none', fontSize: '0.9rem', fontWeight: pathname === '/admin/devices' ? 'bold' : 'normal', background: pathname === '/admin/devices' ? 'rgba(229,9,20,0.05)' : 'transparent' }}>
-            <span style={{ fontSize: '1.1rem' }}>📺</span> Ativação por MAC
-          </Link>
-          <Link href="/admin/clients" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 20px', color: pathname === '/admin/clients' ? '#e50914' : '#ccc', textDecoration: 'none', fontSize: '0.9rem', fontWeight: pathname === '/admin/clients' ? 'bold' : 'normal', background: pathname === '/admin/clients' ? 'rgba(229,9,20,0.05)' : 'transparent' }}>
-            <span style={{ fontSize: '1.1rem' }}>👥</span> Clientes (Manual)
-          </Link>
-          <Link href="/admin/settings" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 20px', color: pathname === '/admin/settings' ? '#e50914' : '#ccc', textDecoration: 'none', fontSize: '0.9rem', fontWeight: pathname === '/admin/settings' ? 'bold' : 'normal', background: pathname === '/admin/settings' ? 'rgba(229,9,20,0.05)' : 'transparent' }}>
-            <span style={{ fontSize: '1.1rem' }}>⚙️</span> Configurações
-          </Link>
+
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  isActive
+                    ? 'bg-[#e50914] text-white shadow-lg shadow-red-900/30'
+                    : 'text-gray-400 hover:bg-[#1a1a1a] hover:text-white'
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
-        <div style={{ padding: '16px 20px', borderTop: '1px solid #222', color: '#444', fontSize: '0.75rem' }}>
-          Center Play v1.0 • IBO Mode
+
+        <div className="p-4 border-t border-[#222] text-[#666] text-xs text-center">
+          Center Play v2.0 • Pro Edition
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-6">
         {/* Header Mobile */}
-        <header className="mobile-header" style={{ 
-          height: '60px', 
-          background: '#111', 
-          borderBottom: '1px solid #222', 
-          display: 'none', 
-          alignItems: 'center', 
-          padding: '0 16px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 40
-        }}>
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', marginRight: '16px' }}
+        <header className="md:hidden h-14 bg-[#121212] border-b border-[#222] flex items-center justify-between px-4 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="text-white p-2 -ml-2 rounded-md hover:bg-[#222] focus:outline-none"
+              aria-label="Menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <span className="text-[#e50914] font-black text-lg">CENTER PLAY</span>
+          </div>
+          <Link
+            href="/admin/devices"
+            className="bg-[#e50914] text-white text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5"
           >
-            ☰
-          </button>
-          <div style={{ color: '#e50914', fontSize: '1.1rem', fontWeight: 900 }}>CENTER PLAY</div>
+            <span>➕</span> Ativar MAC
+          </Link>
         </header>
 
-        <main className="mobile-full" style={{ 
-          marginLeft: '240px', 
-          flex: 1, 
-          padding: '32px', 
-          minHeight: '100vh' 
-        }}>
+        {/* Content Body */}
+        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto overflow-x-hidden">
           {children}
         </main>
-      </div>
 
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .mobile-header { display: flex !important; }
-          main.mobile-full { margin-left: 0 !important; padding: 16px !important; }
-        }
-      `}</style>
+        {/* Bottom Navigation Bar for Mobile Phones (Thumb-Friendly) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#121212]/95 border-t border-[#222] backdrop-blur-md z-30 flex items-center justify-around px-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center justify-center flex-1 py-1 text-center ${
+                  isActive ? 'text-[#e50914] font-bold' : 'text-gray-400'
+                }`}
+              >
+                <span className="text-xl mb-0.5">{item.icon}</span>
+                <span className="text-[10px] tracking-tight">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }

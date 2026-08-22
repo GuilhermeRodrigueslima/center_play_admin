@@ -14,13 +14,6 @@ interface Device {
   expiresAt: string | null;
   lastSeenAt: string | null;
   notes: string | null;
-  sessions?: {
-    id: string;
-    ping: number | null;
-    lastPingAt: string;
-    connectedAt: string;
-    status: string;
-  }[];
 }
 
 // Parser inteligente para qualquer link M3U / HLS / SSIPTV
@@ -41,7 +34,7 @@ function parseM3uLink(rawUrl: string) {
       };
     }
     
-    // 2. M3U / HLS / SSIPTV Curto: /p/USERNAME/PASSWORD/m3u ou /hls ou /ssiptv
+    // 2. M3U / HLS / SSIPTV Curto: /p/USERNAME/PASSWORD/m3u
     const pMatch = parsed.pathname.match(/\/p\/([^\/]+)\/([^\/]+)/i);
     if (pMatch && pMatch[1] && pMatch[2]) {
       return {
@@ -71,7 +64,6 @@ export default function DevicesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
-  const [onlineSessions, setOnlineSessions] = useState<any[]>([]);
 
   // Medidor de latência e velocidade dos servidores
   const [latencies, setLatencies] = useState<Record<string, { latencyMs: number; statusCategory: string; error?: string }>>({});
@@ -99,15 +91,9 @@ export default function DevicesPage() {
 
   const fetchDevices = async () => {
     try {
-      const [devicesRes, telemetryRes] = await Promise.all([
-        fetch('/api/device'),
-        fetch('/api/telemetry')
-      ]);
-      const devicesData = await devicesRes.json();
-      const telemetryData = await telemetryRes.json();
-      
-      if (Array.isArray(devicesData)) setDevices(devicesData);
-      if (Array.isArray(telemetryData)) setOnlineSessions(telemetryData);
+      const res = await fetch('/api/device');
+      const data = await res.json();
+      if (Array.isArray(data)) setDevices(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -117,11 +103,6 @@ export default function DevicesPage() {
 
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 30000); // Atualiza a cada 30s
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const urlMac = params.get('mac');
@@ -282,220 +263,273 @@ export default function DevicesPage() {
   );
 
   return (
-    <div style={{ color: '#fff' }}>
-      <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+    <div className="w-full">
+      {/* Header & Ações */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Ativação por MAC Address</h1>
-          <p style={{ color: '#888', margin: '4px 0 0', fontSize: '0.9rem' }}>
-            Gerencie dispositivos com monitor de velocidade e latência.
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Ativação por MAC Address</h1>
+          <p className="text-gray-400 text-xs md:text-sm mt-1">
+            Gerencie Smart TVs e TV Boxes estilo IBO Player com medidor de latência.
           </p>
         </div>
-        <div className="mobile-stack" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', width: typeof window !== 'undefined' && window.innerWidth <= 768 ? '100%' : 'auto' }}>
+
+        <div className="flex flex-wrap gap-2.5">
           <button
             onClick={testAllServers}
             disabled={testingLatency || devices.length === 0}
-            className="mobile-full"
-            style={{
-              background: '#1e293b',
-              border: '1px solid #3b82f6',
-              color: '#60a5fa',
-              padding: '10px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-            }}
+            className="flex-1 md:flex-none bg-[#1e293b] border border-[#3b82f6] text-[#60a5fa] hover:bg-[#3b82f6]/20 px-3.5 py-2.5 rounded-lg font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 transition-all"
           >
-            {testingLatency ? '⏳ Testando...' : '⚡ Latência Servidores'}
+            {testingLatency ? '⏳ Testando...' : '⚡ Testar Latência'}
           </button>
 
           {selectedIds.length > 0 && (
             <button
               onClick={() => setBulkModalOpen(true)}
-              className="mobile-full"
-              style={{ background: '#333', border: '1px solid #555', color: '#fff', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+              className="bg-[#222] border border-[#444] text-white px-3.5 py-2.5 rounded-lg font-bold text-xs md:text-sm"
             >
               🔄 Massa ({selectedIds.length})
             </button>
           )}
+
           <button
             onClick={openAddModal}
-            className="mobile-full"
-            style={{ background: '#e50914', border: 'none', color: '#fff', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            className="flex-1 md:flex-none bg-[#e50914] hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-red-900/30 transition-all"
           >
-            ➕ Ativar MAC
+            ➕ Ativar Novo MAC
           </button>
         </div>
       </div>
 
       {/* Busca */}
-      <div style={{ marginBottom: '20px' }}>
+      <div className="mb-5">
         <input
           type="text"
-          placeholder="🔍 Buscar MAC, Nome ou Usuário..."
+          placeholder="🔍 Buscar por MAC, Nome ou Usuário..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ width: '100%', maxWidth: '400px', padding: '12px 16px', background: '#161616', border: '1px solid #333', borderRadius: '8px', color: '#fff', outline: 'none' }}
+          className="w-full md:max-w-md px-4 py-3 bg-[#161616] border border-[#2e2e2e] rounded-xl text-white text-sm focus:outline-none focus:border-[#e50914] transition-colors"
         />
       </div>
 
-      {/* Tabela de Dispositivos */}
-      <div className="table-container" style={{ background: '#141414', borderRadius: '12px', border: '1px solid #222', overflowX: 'auto' }}>
-        <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+      {/* Visão Mobile: Lista de Cards Elegantes (Zero Zoom Necessário!) */}
+      <div className="md:hidden space-y-3.5 mb-8">
+        {loading ? (
+          <div className="p-8 text-center text-gray-500 text-sm">Carregando dispositivos...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm bg-[#141414] rounded-xl border border-[#222]">
+            Nenhum dispositivo encontrado. Quando o cliente abrir o app, o MAC aparecerá aqui automaticamente!
+          </div>
+        ) : (
+          filtered.map((d) => {
+            const isActivated = Boolean(d.xtreamUrl && d.username && d.password);
+            const serverLat = d.xtreamUrl ? latencies[d.xtreamUrl] : null;
+
+            return (
+              <div
+                key={d.id}
+                className="bg-[#141414] border border-[#222] rounded-xl p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-mono font-black text-[#e50914] text-base">{d.macAddress}</div>
+                    <div className="text-xs text-gray-400 font-medium">{d.name || 'Sem nome atribuído'}</div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleActive(d)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                      d.isActive
+                        ? 'bg-green-950/40 text-green-400 border-green-600/40'
+                        : 'bg-red-950/40 text-red-400 border-red-600/40'
+                    }`}
+                  >
+                    {d.isActive ? '● Ativo' : '● Bloqueado'}
+                  </button>
+                </div>
+
+                <div className="bg-[#1a1a1a] rounded-lg p-2.5 text-xs space-y-1 text-gray-300">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Key:</span>
+                    <span className="font-mono text-gray-300">{d.deviceKey}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Status IPTV:</span>
+                    {isActivated ? (
+                      <span className="text-green-400 font-bold">{d.username}</span>
+                    ) : (
+                      <span className="text-amber-400 bg-amber-950/30 px-2 py-0.5 rounded text-[10px] font-bold">
+                        Aguardando Lista
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Servidor:</span>
+                    <span className="font-mono text-[11px] truncate max-w-[180px] text-gray-400">
+                      {d.xtreamUrl || '-'}
+                    </span>
+                  </div>
+                  {serverLat && (
+                    <div className="pt-1 flex justify-end">
+                      {serverLat.statusCategory === 'excellent' && (
+                        <span className="text-green-400 text-[10px] font-bold bg-green-950/40 px-2 py-0.5 rounded border border-green-800/40">
+                          🟢 {serverLat.latencyMs}ms (Rápido)
+                        </span>
+                      )}
+                      {serverLat.statusCategory === 'good' && (
+                        <span className="text-yellow-400 text-[10px] font-bold bg-yellow-950/40 px-2 py-0.5 rounded border border-yellow-800/40">
+                          🟡 {serverLat.latencyMs}ms (Normal)
+                        </span>
+                      )}
+                      {serverLat.statusCategory === 'slow' && (
+                        <span className="text-orange-400 text-[10px] font-bold bg-orange-950/40 px-2 py-0.5 rounded border border-orange-800/40">
+                          🔴 {serverLat.latencyMs}ms (Lento)
+                        </span>
+                      )}
+                      {serverLat.statusCategory === 'down' && (
+                        <span className="text-red-400 text-[10px] font-bold bg-red-950/40 px-2 py-0.5 rounded border border-red-800/40">
+                          ❌ Offline
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => openEditModal(d)}
+                    className="flex-1 bg-[#2563eb] hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    {isActivated ? '✏️ Trocar / Editar' : '⚡ Ativar Lista'}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(d.id)}
+                    className="bg-[#222] hover:bg-red-950/60 text-red-400 border border-[#333] px-3 py-2 rounded-lg text-xs"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Visão Desktop: Tabela Completa */}
+      <div className="hidden md:block bg-[#141414] rounded-xl border border-[#222] overflow-hidden">
+        <table className="w-full text-left text-sm">
           <thead>
-            <tr style={{ background: '#1b1b1b', borderBottom: '1px solid #282828', color: '#aaa' }}>
-              <th style={{ padding: '14px 16px', width: '40px' }}>
+            <tr className="bg-[#1a1a1a] border-b border-[#282828] text-gray-400">
+              <th className="p-4 w-10">
                 <input
                   type="checkbox"
                   checked={filtered.length > 0 && selectedIds.length === filtered.length}
                   onChange={selectAll}
                 />
               </th>
-              <th style={{ padding: '14px 16px' }}>MAC Address / Key</th>
-              <th style={{ padding: '14px 16px' }}>Cliente / Aparelho</th>
-              <th style={{ padding: '14px 16px' }}>Credenciais IPTV</th>
-              <th style={{ padding: '14px 16px' }}>Servidor URL / Latência</th>
-              <th style={{ padding: '14px 16px' }}>Online / Latência App</th>
-              <th style={{ padding: '14px 16px' }}>Status</th>
-              <th style={{ padding: '14px 16px', textAlign: 'right' }}>Ações</th>
+              <th className="p-4">MAC Address / Key</th>
+              <th className="p-4">Cliente / Aparelho</th>
+              <th className="p-4">Credenciais IPTV</th>
+              <th className="p-4">Servidor / Latência</th>
+              <th className="p-4">Status</th>
+              <th className="p-4 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-[#222]">
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ padding: '30px', textAlign: 'center', color: '#888' }}>
+                <td colSpan={7} className="p-8 text-center text-gray-500">
                   Carregando dispositivos...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-                  Nenhum dispositivo encontrado. Quando um cliente abrir o app, o MAC aparecerá aqui automaticamente!
+                <td colSpan={7} className="p-8 text-center text-gray-500">
+                  Nenhum dispositivo encontrado.
                 </td>
               </tr>
             ) : (
               filtered.map((d) => {
                 const isActivated = Boolean(d.xtreamUrl && d.username && d.password);
                 const serverLat = d.xtreamUrl ? latencies[d.xtreamUrl] : null;
-                const activeSession = onlineSessions.find(s => s.deviceId === d.id);
 
                 return (
-                  <tr key={d.id} style={{ borderBottom: '1px solid #1f1f1f' }}>
-                    <td style={{ padding: '14px 16px' }}>
+                  <tr key={d.id} className="hover:bg-[#181818]/60 transition-colors">
+                    <td className="p-4">
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(d.id)}
                         onChange={() => toggleSelect(d.id)}
                       />
                     </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#e50914', fontSize: '0.95rem' }}>
-                        {d.macAddress}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#777' }}>
-                        Key: {d.deviceKey}
-                      </div>
+                    <td className="p-4">
+                      <div className="font-mono font-bold text-[#e50914]">{d.macAddress}</div>
+                      <div className="text-xs text-gray-500">Key: {d.deviceKey}</div>
                     </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ fontWeight: 'bold', color: '#fff' }}>{d.name || 'Sem nome'}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#666' }}>{d.notes || 'Sem observações'}</div>
+                    <td className="p-4">
+                      <div className="font-bold text-white">{d.name || 'Sem nome'}</div>
+                      <div className="text-xs text-gray-500">{d.notes || 'Sem observações'}</div>
                     </td>
-                    <td style={{ padding: '14px 16px' }}>
+                    <td className="p-4">
                       {isActivated ? (
                         <div>
-                          <span style={{ color: '#0f0', fontWeight: 'bold' }}>{d.username}</span>
-                          <span style={{ color: '#666', fontSize: '0.8rem' }}> (senha vinculada)</span>
+                          <span className="text-green-400 font-bold">{d.username}</span>
+                          <span className="text-gray-500 text-xs"> (senha vinculada)</span>
                         </div>
                       ) : (
-                        <span style={{ color: '#f59e0b', fontSize: '0.8rem', background: 'rgba(245,158,11,0.1)', padding: '3px 8px', borderRadius: '4px' }}>
+                        <span className="text-amber-400 text-xs bg-amber-950/40 px-2.5 py-1 rounded">
                           Aguardando Lista
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '14px 16px', color: '#999', fontSize: '0.85rem' }}>
-                      <div style={{ fontFamily: 'monospace' }}>{d.xtreamUrl || '-'}</div>
+                    <td className="p-4 text-gray-400 text-xs font-mono">
+                      <div>{d.xtreamUrl || '-'}</div>
                       {serverLat && (
-                        <div style={{ marginTop: '4px' }}>
+                        <div className="mt-1">
                           {serverLat.statusCategory === 'excellent' && (
-                            <span style={{ color: '#22c55e', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(34,197,94,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              🌐 {serverLat.latencyMs}ms (SR)
+                            <span className="text-green-400 font-bold bg-green-950/40 px-2 py-0.5 rounded">
+                              🟢 {serverLat.latencyMs}ms (Rápido)
                             </span>
                           )}
                           {serverLat.statusCategory === 'good' && (
-                            <span style={{ color: '#eab308', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(234,179,8,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              🌐 {serverLat.latencyMs}ms (OK)
+                            <span className="text-yellow-400 font-bold bg-yellow-950/40 px-2 py-0.5 rounded">
+                              🟡 {serverLat.latencyMs}ms (Normal)
                             </span>
                           )}
                           {serverLat.statusCategory === 'slow' && (
-                            <span style={{ color: '#f97316', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(249,115,22,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              🌐 {serverLat.latencyMs}ms (LE)
+                            <span className="text-orange-400 font-bold bg-orange-950/40 px-2 py-0.5 rounded">
+                              🔴 {serverLat.latencyMs}ms (Lento)
                             </span>
                           )}
                           {serverLat.statusCategory === 'down' && (
-                            <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(239,68,68,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                              ❌ OFF
+                            <span className="text-red-400 font-bold bg-red-950/40 px-2 py-0.5 rounded">
+                              ❌ Offline
                             </span>
                           )}
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      {activeSession ? (
-                        <div>
-                          <span style={{ color: '#22c55e', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            🟢 ONLINE
-                          </span>
-                          <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px' }}>
-                            Ping: <span style={{ color: activeSession.ping < 100 ? '#22c55e' : activeSession.ping < 300 ? '#eab308' : '#ef4444' }}>
-                              {activeSession.ping}ms
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: '#666' }}>
-                            Desde: {new Date(activeSession.connectedAt).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <span style={{ color: '#666' }}>OFFLINE</span>
-                          {d.lastSeenAt && (
-                            <div style={{ fontSize: '0.7rem', color: '#444' }}>
-                              Visto: {new Date(d.lastSeenAt).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
+                    <td className="p-4">
                       <button
                         onClick={() => handleToggleActive(d)}
-                        style={{
-                          background: d.isActive ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                          color: d.isActive ? '#22c55e' : '#ef4444',
-                          border: `1px solid ${d.isActive ? '#22c55e' : '#ef4444'}`,
-                          padding: '4px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                          d.isActive
+                            ? 'bg-green-950/40 text-green-400 border-green-600/40'
+                            : 'bg-red-950/40 text-red-400 border-red-600/40'
+                        }`}
                       >
                         {d.isActive ? 'Ativo' : 'Bloqueado'}
                       </button>
                     </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <td className="p-4 text-right">
+                      <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => openEditModal(d)}
-                          style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                          className="bg-[#2563eb] hover:bg-blue-600 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors"
                         >
                           {isActivated ? '✏️ Trocar / Editar' : '⚡ Ativar Lista'}
                         </button>
                         <button
                           onClick={() => handleDelete(d.id)}
-                          style={{ background: '#333', color: '#ef4444', border: '1px solid #444', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                          className="bg-[#222] hover:bg-red-950/60 text-red-400 border border-[#333] px-2.5 py-1.5 rounded-lg text-xs"
                         >
                           🗑️
                         </button>
@@ -509,126 +543,126 @@ export default function DevicesPage() {
         </table>
       </div>
 
-      {/* Modal Ativar / Editar */}
+      {/* Modal Ativar / Editar (Totalmente Responsivo) */}
       {modalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: '#161616', border: '1px solid #333', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ margin: '0 0 16px', fontSize: '1.3rem' }}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto">
+          <div className="bg-[#161616] border border-[#333] rounded-2xl p-5 md:p-6 w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl my-auto">
+            <h2 className="text-lg md:text-xl font-bold mb-4">
               {editingDevice ? `Configurar MAC: ${editingDevice.macAddress}` : 'Cadastrar Novo Dispositivo'}
             </h2>
 
-            {/* Caixa M3U Rápido */}
-            <div style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#22c55e', fontWeight: 'bold', fontSize: '0.85rem' }}>
+            {/* Ativação Rápida M3U */}
+            <div className="bg-green-950/20 border border-green-600/30 rounded-xl p-3.5 mb-4">
+              <div className="text-green-400 font-bold text-xs mb-2 flex items-center gap-1.5">
                 <span>⚡ Ativação Rápida por Link M3U / HLS / SSIPTV:</span>
               </div>
               <input
                 type="text"
-                placeholder="Cole aqui o link M3U (ex: http://ultrakay.cc/get.php?username=... ou /p/user/pass/m3u)"
+                placeholder="Cole o link M3U aqui..."
                 value={m3uInput}
                 onChange={(e) => handleM3uChange(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', background: '#111', border: '1px solid #22c55e', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
+                className="w-full px-3 py-2 bg-[#111] border border-green-600/50 rounded-lg text-white text-xs md:text-sm focus:outline-none"
               />
               {m3uSuccess && (
-                <div style={{ marginTop: '6px', color: '#22c55e', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                  ✓ Link identificado! Servidor, usuário e senha preenchidos automaticamente abaixo.
+                <div className="mt-2 text-green-400 text-xs font-bold">
+                  ✓ Link identificado! Servidor, usuário e senha preenchidos abaixo.
                 </div>
               )}
             </div>
 
-            <form onSubmit={handleSave}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>MAC Address *</label>
+            <form onSubmit={handleSave} className="space-y-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-xs text-gray-400 mb-1">MAC Address *</label>
                   <input
                     type="text"
                     required
-                    placeholder="ex: 00:1A:79:B4:C2:8A"
+                    placeholder="00:1A:79:B4:C2:8A"
                     value={form.macAddress}
                     onChange={(e) => setForm({ ...form, macAddress: e.target.value })}
-                    style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff', fontFamily: 'monospace' }}
+                    className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white font-mono text-sm"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>Device Key</label>
+                  <label className="block text-xs text-gray-400 mb-1">Device Key</label>
                   <input
                     type="text"
                     value={form.deviceKey}
                     onChange={(e) => setForm({ ...form, deviceKey: e.target.value })}
-                    style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff' }}
+                    className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm"
                   />
                 </div>
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>Nome do Cliente / Identificação</label>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Nome do Cliente / TV</label>
                 <input
                   type="text"
-                  placeholder="ex: João - Smart TV Sala"
+                  placeholder="ex: João - Sala"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff' }}
+                  className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm"
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>URL do Servidor Xtream *</label>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">URL do Servidor Xtream *</label>
                 <input
                   type="text"
                   required
-                  placeholder="http://seu-servidor.pro"
+                  placeholder="http://servidor.pro"
                   value={form.xtreamUrl}
                   onChange={(e) => setForm({ ...form, xtreamUrl: e.target.value })}
-                  style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff' }}
+                  className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm font-mono"
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>Usuário IPTV *</label>
+                  <label className="block text-xs text-gray-400 mb-1">Usuário IPTV *</label>
                   <input
                     type="text"
                     required
                     placeholder="usuario"
                     value={form.username}
                     onChange={(e) => setForm({ ...form, username: e.target.value })}
-                    style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff' }}
+                    className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>Senha IPTV *</label>
+                  <label className="block text-xs text-gray-400 mb-1">Senha IPTV *</label>
                   <input
                     type="text"
                     required
                     placeholder="senha"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff' }}
+                    className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm"
                   />
                 </div>
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>Data de Vencimento</label>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Vencimento</label>
                 <input
                   type="date"
                   value={form.expiresAt}
                   onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
-                  style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff' }}
+                  className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm"
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div className="flex justify-end gap-2.5 pt-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  style={{ background: '#333', color: '#ccc', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer' }}
+                  className="px-4 py-2.5 bg-[#333] hover:bg-[#444] text-gray-300 rounded-lg text-sm font-semibold transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  style={{ background: '#e50914', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                  className="px-5 py-2.5 bg-[#e50914] hover:bg-red-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-red-900/30 transition-all"
                 >
                   💾 Salvar e Ativar
                 </button>
@@ -640,35 +674,35 @@ export default function DevicesPage() {
 
       {/* Modal Alterar URL em Massa */}
       {bulkModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: '#161616', border: '1px solid #333', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '460px' }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: '1.2rem' }}>Alterar URL em Massa ({selectedIds.length} selecionados)</h2>
-            <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '16px' }}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50">
+          <div className="bg-[#161616] border border-[#333] rounded-2xl p-5 md:p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-lg font-bold mb-2">Alterar URL em Massa ({selectedIds.length} selecionados)</h2>
+            <p className="text-gray-400 text-xs mb-4">
               Todos os dispositivos selecionados terão sua URL de servidor atualizada instantaneamente.
             </p>
-            <form onSubmit={handleBulkUpdate}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>Nova URL do Servidor Xtream</label>
+            <form onSubmit={handleBulkUpdate} className="space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Nova URL do Servidor</label>
                 <input
                   type="text"
                   required
                   placeholder="http://novo-servidor.pro"
                   value={bulkUrl}
                   onChange={(e) => setBulkUrl(e.target.value)}
-                  style={{ width: '100%', padding: '10px', background: '#222', border: '1px solid #444', borderRadius: '6px', color: '#fff' }}
+                  className="w-full px-3.5 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm font-mono"
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div className="flex justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setBulkModalOpen(false)}
-                  style={{ background: '#333', color: '#ccc', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer' }}
+                  className="px-4 py-2 bg-[#333] text-gray-300 rounded-lg text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  style={{ background: '#e50914', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                  className="px-5 py-2 bg-[#e50914] text-white rounded-lg text-sm font-bold"
                 >
                   Atualizar Todos
                 </button>
