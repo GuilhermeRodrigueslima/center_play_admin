@@ -57,14 +57,14 @@ export default function AdminDashboard() {
     <div>
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Dashboard</h1>
-        <p style={{ color: '#888', margin: '6px 0 0', fontSize: '0.9rem' }}>Visão geral do Center Play em tempo real</p>
+        <p style={{ color: '#888', margin: '6px 0 0', fontSize: '0.9rem' }}>Visão geral do Center Play</p>
       </div>
 
       {loading ? (
         <div style={{ color: '#666', textAlign: 'center', padding: '60px' }}>Carregando estatísticas...</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '18px', marginBottom: '36px' }}>
+          <div className="card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '18px', marginBottom: '36px' }}>
             {cards.map((card) => (
               <Link key={card.label} href={card.href} style={{ textDecoration: 'none' }}>
                 <div

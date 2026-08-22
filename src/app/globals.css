@@ -24,3 +24,30 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom Responsive Helpers for Admin Panel */
+@media (max-width: 768px) {
+  .mobile-hide {
+    display: none !important;
+  }
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+  .mobile-full {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding: 16px !important;
+  }
+  .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .card-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.admin-sidebar-transition {
+  transition: transform 0.3s ease-in-out;
+}
+

@@ -70,7 +70,7 @@ export default function SettingsPage() {
       </div>
 
       <div style={{ maxWidth: '640px' }}>
-        <div style={{ background: '#111', border: '1px solid #222', borderRadius: '14px', padding: '32px', marginBottom: '24px' }}>
+        <div className="mobile-full" style={{ background: '#111', border: '1px solid #222', borderRadius: '14px', padding: '32px', marginBottom: '24px' }}>
           <h2 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700, margin: '0 0 24px', paddingBottom: '16px', borderBottom: '1px solid #222' }}>
             Servidor Xtream Codes
           </h2>

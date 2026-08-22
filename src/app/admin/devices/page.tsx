@@ -283,17 +283,18 @@ export default function DevicesPage() {
 
   return (
     <div style={{ color: '#fff' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Ativação por MAC Address</h1>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: '0.9rem' }}>
-            Gerencie dispositivos estilo IBO Player com monitor de velocidade e latência em tempo real.
+            Gerencie dispositivos com monitor de velocidade e latência.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="mobile-stack" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', width: typeof window !== 'undefined' && window.innerWidth <= 768 ? '100%' : 'auto' }}>
           <button
             onClick={testAllServers}
             disabled={testingLatency || devices.length === 0}
+            className="mobile-full"
             style={{
               background: '#1e293b',
               border: '1px solid #3b82f6',
@@ -304,25 +305,28 @@ export default function DevicesPage() {
               fontWeight: 'bold',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px',
             }}
           >
-            {testingLatency ? '⏳ Testando Velocidade...' : '⚡ Testar Latência dos Servidores'}
+            {testingLatency ? '⏳ Testando...' : '⚡ Latência Servidores'}
           </button>
 
           {selectedIds.length > 0 && (
             <button
               onClick={() => setBulkModalOpen(true)}
+              className="mobile-full"
               style={{ background: '#333', border: '1px solid #555', color: '#fff', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
             >
-              🔄 Mudar URL em Massa ({selectedIds.length})
+              🔄 Massa ({selectedIds.length})
             </button>
           )}
           <button
             onClick={openAddModal}
-            style={{ background: '#e50914', border: 'none', color: '#fff', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
+            className="mobile-full"
+            style={{ background: '#e50914', border: 'none', color: '#fff', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            ➕ Ativar Novo MAC
+            ➕ Ativar MAC
           </button>
         </div>
       </div>
@@ -331,7 +335,7 @@ export default function DevicesPage() {
       <div style={{ marginBottom: '20px' }}>
         <input
           type="text"
-          placeholder="🔍 Buscar por MAC Address, Nome ou Usuário..."
+          placeholder="🔍 Buscar MAC, Nome ou Usuário..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ width: '100%', maxWidth: '400px', padding: '12px 16px', background: '#161616', border: '1px solid #333', borderRadius: '8px', color: '#fff', outline: 'none' }}
@@ -339,8 +343,8 @@ export default function DevicesPage() {
       </div>
 
       {/* Tabela de Dispositivos */}
-      <div style={{ background: '#141414', borderRadius: '12px', border: '1px solid #222', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+      <div className="table-container" style={{ background: '#141414', borderRadius: '12px', border: '1px solid #222', overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
           <thead>
             <tr style={{ background: '#1b1b1b', borderBottom: '1px solid #282828', color: '#aaa' }}>
               <th style={{ padding: '14px 16px', width: '40px' }}>

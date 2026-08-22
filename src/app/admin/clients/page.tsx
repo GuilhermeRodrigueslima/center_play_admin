@@ -322,18 +322,18 @@ export default function ClientsPage() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ color: '#fff', fontSize: '1.6rem', fontWeight: 800, margin: 0 }}>Gerenciador de Clientes</h1>
           <p style={{ color: '#666', fontSize: '0.85rem', margin: '4px 0 0' }}>{clients.length} cliente(s) cadastrado(s)</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="mobile-stack" style={{ display: 'flex', gap: '10px', width: typeof window !== 'undefined' && window.innerWidth <= 768 ? '100%' : 'auto' }}>
           {selected.size > 0 && (
-            <button onClick={() => setShowBulkModal(true)} style={{ ...btnGray, borderColor: '#e50914', color: '#fff' }}>
-              Mudar URL em Massa ({selected.size})
+            <button onClick={() => setShowBulkModal(true)} className="mobile-full" style={{ ...btnGray, borderColor: '#e50914', color: '#fff' }}>
+              Massa ({selected.size})
             </button>
           )}
-          <button onClick={() => { setM3uInput(''); setM3uSuccess(false); setAddForm({ ...EMPTY_FORM }); setShowAddModal(true); }} style={btnRed}>
+          <button onClick={() => { setM3uInput(''); setM3uSuccess(false); setAddForm({ ...EMPTY_FORM }); setShowAddModal(true); }} className="mobile-full" style={btnRed}>
             + Novo Cliente
           </button>
         </div>
@@ -351,8 +351,8 @@ export default function ClientsPage() {
       </div>
 
       {/* Tabela */}
-      <div style={{ background: '#111', border: '1px solid #222', borderRadius: '12px', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ccc', fontSize: '0.88rem' }}>
+      <div className="table-container" style={{ background: '#111', border: '1px solid #222', borderRadius: '12px', overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', color: '#ccc', fontSize: '0.88rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #222', background: '#161616', textAlign: 'left' }}>
               <th style={{ padding: '14px 16px', width: '36px' }}>
