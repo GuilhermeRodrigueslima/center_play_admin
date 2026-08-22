@@ -1,46 +1,44 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { sql } from '@/lib/db';
 
-type Params = { params: Promise<{ id: string }> };
-
-export async function PUT(req: Request, { params }: Params) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await req.json();
+    const { username, password, name, xtreamUrl, isActive, expiresAt, notes } = body;
+    const expDate = expiresAt ? new Date(expiresAt).toISOString() : null;
 
-    const existing = await prisma.client.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
-    }
+    const updated = await sql`
+      UPDATE "Client"
+      SET
+        "username" = COALESCE(${username}, "username"),
+        "password" = COALESCE(${password}, "password"),
+        "name" = COALESCE(${name}, "name"),
+        "xtreamUrl" = COALESCE(${xtreamUrl}, "xtreamUrl"),
+        "isActive" = COALESCE(${isActive}, "isActive"),
+        "expiresAt" = ${expDate},
+        "notes" = COALESCE(${notes}, "notes"),
+        "updatedAt" = NOW()
+      WHERE "id" = ${id}
+      RETURNING *
+    `;
 
-    const updated = await prisma.client.update({
-      where: { id },
-      data: {
-        username: body.username ?? existing.username,
-        password: body.password ?? existing.password,
-        name: body.name !== undefined ? body.name : existing.name,
-        xtreamUrl: body.xtreamUrl ?? existing.xtreamUrl,
-        isActive: body.isActive !== undefined ? Boolean(body.isActive) : existing.isActive,
-        expiresAt: body.expiresAt !== undefined
-          ? (body.expiresAt ? new Date(body.expiresAt) : null)
-          : existing.expiresAt,
-        notes: body.notes !== undefined ? body.notes : existing.notes,
-      },
-    });
-
-    return NextResponse.json(updated);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error updating client';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(updated[0]);
+  } catch (error: any) {
+    console.error('Error updating client:', error);
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.client.delete({ where: { id } });
+    await sql`
+      DELETE FROM "Client" WHERE "id" = ${id}
+    `;
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: 'Error deleting client' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error deleting client:', error);
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { sql } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
@@ -16,29 +16,28 @@ export async function POST(req: Request) {
 
     const cleanMac = macAddress.toUpperCase().trim();
     const safeKey = deviceKey || Math.floor(100000 + Math.random() * 900000).toString();
+    const generatedId = 'dev_' + Math.random().toString(36).substring(2, 12);
 
-    // Upsert o dispositivo para manter registrado e atualizado
-    const device = await prisma.device.upsert({
-      where: { macAddress: cleanMac },
-      update: {
-        deviceKey: safeKey,
-        lastSeenAt: new Date(),
-      },
-      create: {
-        macAddress: cleanMac,
-        deviceKey: safeKey,
-        name: name || 'Smart TV / TV Box',
-        isActive: true,
-      },
-    });
+    const devices = await sql`
+      INSERT INTO "Device" (
+        "id", "macAddress", "deviceKey", "name", "isActive", "createdAt", "updatedAt", "lastSeenAt"
+      ) VALUES (
+        ${generatedId}, ${cleanMac}, ${safeKey}, ${name || 'Smart TV / TV Box'}, true, NOW(), NOW(), NOW()
+      )
+      ON CONFLICT ("macAddress") DO UPDATE SET
+        "deviceKey" = ${safeKey},
+        "lastSeenAt" = NOW()
+      RETURNING *
+    `;
 
+    const device = devices[0];
     const isConfigured = Boolean(
       device.xtreamUrl &&
       device.username &&
       device.password &&
-      device.xtreamUrl.trim().length > 0 &&
-      device.username.trim().length > 0 &&
-      device.password.trim().length > 0
+      String(device.xtreamUrl).trim().length > 0 &&
+      String(device.username).trim().length > 0 &&
+      String(device.password).trim().length > 0
     );
 
     return NextResponse.json({
@@ -52,8 +51,8 @@ export async function POST(req: Request) {
       expiresAt: device.expiresAt || null,
       isActive: device.isActive,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in /api/device/register:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }

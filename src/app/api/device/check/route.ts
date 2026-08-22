@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { sql } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
@@ -14,28 +14,32 @@ export async function POST(req: Request) {
     }
 
     const cleanMac = macAddress.toUpperCase().trim();
+    const safeKey = deviceKey || Math.floor(100000 + Math.random() * 900000).toString();
 
-    let device = await prisma.device.findUnique({
-      where: { macAddress: cleanMac },
-    });
+    // 1. Busca dispositivo no Neon PostgreSQL
+    const existing = await sql`
+      SELECT * FROM "Device" WHERE "macAddress" = ${cleanMac} LIMIT 1
+    `;
 
-    if (!device) {
-      device = await prisma.device.create({
-        data: {
-          macAddress: cleanMac,
-          deviceKey: deviceKey || Math.floor(100000 + Math.random() * 900000).toString(),
-          name: 'Smart TV / TV Box',
-          isActive: true,
-        },
-      });
+    let device: any = null;
+
+    if (existing.length === 0) {
+      // Auto-cadastra aparelho no banco imediatamente como "Aguardando Lista"
+      const generatedId = 'dev_' + Math.random().toString(36).substring(2, 12);
+      const inserted = await sql`
+        INSERT INTO "Device" (
+          "id", "macAddress", "deviceKey", "name", "isActive", "createdAt", "updatedAt", "lastSeenAt"
+        ) VALUES (
+          ${generatedId}, ${cleanMac}, ${safeKey}, 'Smart TV / TV Box', true, NOW(), NOW(), NOW()
+        ) RETURNING *
+      `;
+      device = inserted[0];
     } else {
-      await prisma.device.update({
-        where: { id: device.id },
-        data: {
-          lastSeenAt: new Date(),
-          deviceKey: deviceKey || device.deviceKey,
-        },
-      });
+      device = existing[0];
+      // Atualiza lastSeenAt
+      await sql`
+        UPDATE "Device" SET "lastSeenAt" = NOW() WHERE "id" = ${device.id}
+      `;
     }
 
     if (!device.isActive) {
@@ -52,7 +56,7 @@ export async function POST(req: Request) {
         activated: false,
         macAddress: device.macAddress,
         deviceKey: device.deviceKey,
-        error: 'Assinatura expirada. Contate o suporte.',
+        error: 'Assinatura expirada. Contate o suporte para renovar.',
       });
     }
 
@@ -60,9 +64,9 @@ export async function POST(req: Request) {
       device.xtreamUrl &&
       device.username &&
       device.password &&
-      device.xtreamUrl.trim().length > 0 &&
-      device.username.trim().length > 0 &&
-      device.password.trim().length > 0
+      String(device.xtreamUrl).trim().length > 0 &&
+      String(device.username).trim().length > 0 &&
+      String(device.password).trim().length > 0
     );
 
     return NextResponse.json({
@@ -78,10 +82,6 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('Error in /api/device/check:', error);
-    return NextResponse.json({ 
-      error: error?.message || 'Database error',
-      name: error?.name,
-      code: error?.code,
-    }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }

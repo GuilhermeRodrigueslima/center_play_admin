@@ -1,39 +1,44 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { sql } from '@/lib/db';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await req.json();
     const { name, xtreamUrl, username, password, isActive, expiresAt, notes } = body;
+    const expDate = expiresAt ? new Date(expiresAt).toISOString() : null;
 
-    const device = await prisma.device.update({
-      where: { id },
-      data: {
-        name: name !== undefined ? name : undefined,
-        xtreamUrl: xtreamUrl !== undefined ? xtreamUrl : undefined,
-        username: username !== undefined ? username : undefined,
-        password: password !== undefined ? password : undefined,
-        isActive: isActive !== undefined ? isActive : undefined,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        notes: notes !== undefined ? notes : undefined,
-      },
-    });
+    const devices = await sql`
+      UPDATE "Device"
+      SET
+        "name" = COALESCE(${name}, "name"),
+        "xtreamUrl" = COALESCE(${xtreamUrl}, "xtreamUrl"),
+        "username" = COALESCE(${username}, "username"),
+        "password" = COALESCE(${password}, "password"),
+        "isActive" = COALESCE(${isActive}, "isActive"),
+        "expiresAt" = ${expDate},
+        "notes" = COALESCE(${notes}, "notes"),
+        "updatedAt" = NOW()
+      WHERE "id" = ${id}
+      RETURNING *
+    `;
 
-    return NextResponse.json(device);
-  } catch (error) {
+    return NextResponse.json(devices[0]);
+  } catch (error: any) {
     console.error('Error updating device:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.device.delete({ where: { id } });
+    await sql`
+      DELETE FROM "Device" WHERE "id" = ${id}
+    `;
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting device:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }

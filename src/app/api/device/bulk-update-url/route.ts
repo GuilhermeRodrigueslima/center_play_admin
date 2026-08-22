@@ -1,26 +1,26 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { sql } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
-    const { ids, xtreamUrl } = await req.json();
+    const body = await req.json();
+    const { ids, xtreamUrl } = body as { ids: string[]; xtreamUrl: string };
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0 || !xtreamUrl) {
-      return NextResponse.json({ error: 'IDs array and xtreamUrl are required' }, { status: 400 });
+    if (!Array.isArray(ids) || ids.length === 0 || !xtreamUrl) {
+      return NextResponse.json({ error: 'ids and xtreamUrl are required' }, { status: 400 });
     }
 
-    const updated = await prisma.device.updateMany({
-      where: {
-        id: { in: ids },
-      },
-      data: {
-        xtreamUrl: xtreamUrl.trim(),
-      },
-    });
+    for (const id of ids) {
+      await sql`
+        UPDATE "Device"
+        SET "xtreamUrl" = ${xtreamUrl}, "updatedAt" = NOW()
+        WHERE "id" = ${id}
+      `;
+    }
 
-    return NextResponse.json({ success: true, count: updated.count });
-  } catch (error) {
-    console.error('Error bulk updating device URLs:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: true, count: ids.length });
+  } catch (error: any) {
+    console.error('Error in bulk-update-url:', error);
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }

@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { sql } from '@/lib/db';
 
-// Listar todos os dispositivos cadastrados / detectados
+// Listar todos os dispositivos cadastrados
 export async function GET() {
   try {
-    const devices = await prisma.device.findMany({
-      orderBy: { updatedAt: 'desc' },
-    });
+    const devices = await sql`
+      SELECT * FROM "Device" ORDER BY "updatedAt" DESC
+    `;
     return NextResponse.json(devices);
   } catch (error: any) {
     console.error('Error fetching devices:', error);
-    return NextResponse.json({ error: error?.message || 'Unknown error', stack: error?.stack }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }
 
@@ -26,34 +26,31 @@ export async function POST(req: Request) {
 
     const cleanMac = macAddress.toUpperCase().trim();
     const safeKey = deviceKey || Math.floor(100000 + Math.random() * 900000).toString();
+    const generatedId = 'dev_' + Math.random().toString(36).substring(2, 12);
+    const expDate = expiresAt ? new Date(expiresAt).toISOString() : null;
 
-    const device = await prisma.device.upsert({
-      where: { macAddress: cleanMac },
-      update: {
-        name: name !== undefined ? name : undefined,
-        xtreamUrl: xtreamUrl !== undefined ? xtreamUrl : undefined,
-        username: username !== undefined ? username : undefined,
-        password: password !== undefined ? password : undefined,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        notes: notes !== undefined ? notes : undefined,
-        isActive: true,
-      },
-      create: {
-        macAddress: cleanMac,
-        deviceKey: safeKey,
-        name: name || 'Smart TV / TV Box',
-        xtreamUrl: xtreamUrl || '',
-        username: username || '',
-        password: password || '',
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        notes: notes || '',
-        isActive: true,
-      },
-    });
+    const devices = await sql`
+      INSERT INTO "Device" (
+        "id", "macAddress", "deviceKey", "name", "xtreamUrl", "username", "password", "expiresAt", "notes", "isActive", "createdAt", "updatedAt", "lastSeenAt"
+      ) VALUES (
+        ${generatedId}, ${cleanMac}, ${safeKey}, ${name || 'Smart TV / TV Box'}, ${xtreamUrl || ''}, ${username || ''}, ${password || ''}, ${expDate}, ${notes || ''}, true, NOW(), NOW(), NOW()
+      )
+      ON CONFLICT ("macAddress") DO UPDATE SET
+        "deviceKey" = ${safeKey},
+        "name" = COALESCE(EXCLUDED."name", "Device"."name"),
+        "xtreamUrl" = EXCLUDED."xtreamUrl",
+        "username" = EXCLUDED."username",
+        "password" = EXCLUDED."password",
+        "expiresAt" = EXCLUDED."expiresAt",
+        "notes" = EXCLUDED."notes",
+        "isActive" = true,
+        "updatedAt" = NOW()
+      RETURNING *
+    `;
 
-    return NextResponse.json(device);
+    return NextResponse.json(devices[0]);
   } catch (error: any) {
     console.error('Error saving device:', error);
-    return NextResponse.json({ error: error?.message || 'Unknown error', stack: error?.stack }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Database error' }, { status: 500 });
   }
 }
