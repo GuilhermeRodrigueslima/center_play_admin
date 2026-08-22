@@ -4,9 +4,10 @@ import { sql } from '@/lib/db';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { macAddress, deviceKey } = body as {
+    const { macAddress, deviceKey, expiresAt } = body as {
       macAddress: string;
       deviceKey: string;
+      expiresAt?: string | null;
     };
 
     if (!macAddress) {
@@ -36,10 +37,20 @@ export async function POST(req: Request) {
       device = inserted[0];
     } else {
       device = existing[0];
-      // Atualiza lastSeenAt
-      await sql`
-        UPDATE "Device" SET "lastSeenAt" = NOW() WHERE "id" = ${device.id}
-      `;
+      // Se o app enviou a validade puxada do servidor Xtream, salva no banco!
+      if (expiresAt) {
+        try {
+          const expIso = new Date(expiresAt).toISOString();
+          await sql`
+            UPDATE "Device" SET "lastSeenAt" = NOW(), "expiresAt" = ${expIso} WHERE "id" = ${device.id}
+          `;
+          device.expiresAt = expIso;
+        } catch (_) {
+          await sql`UPDATE "Device" SET "lastSeenAt" = NOW() WHERE "id" = ${device.id}`;
+        }
+      } else {
+        await sql`UPDATE "Device" SET "lastSeenAt" = NOW() WHERE "id" = ${device.id}`;
+      }
     }
 
     if (!device.isActive) {
@@ -60,25 +71,18 @@ export async function POST(req: Request) {
       });
     }
 
-    const isConfigured = Boolean(
-      device.xtreamUrl &&
-      device.username &&
-      device.password &&
-      String(device.xtreamUrl).trim().length > 0 &&
-      String(device.username).trim().length > 0 &&
-      String(device.password).trim().length > 0
-    );
+    const hasCredentials = Boolean(device.xtreamUrl && device.username && device.password);
 
     return NextResponse.json({
-      activated: isConfigured,
+      activated: hasCredentials,
       macAddress: device.macAddress,
       deviceKey: device.deviceKey,
-      xtreamUrl: device.xtreamUrl || null,
-      username: device.username || null,
-      password: device.password || null,
-      name: device.name || null,
-      expiresAt: device.expiresAt || null,
-      statusMessage: isConfigured ? 'Ativado' : 'Aguardando Lista',
+      xtreamUrl: device.xtreamUrl,
+      username: device.username,
+      password: device.password,
+      name: device.name,
+      expiresAt: device.expiresAt,
+      statusMessage: hasCredentials ? 'Ativo' : 'Aguardando Lista',
     });
   } catch (error: any) {
     console.error('Error in /api/device/check:', error);
