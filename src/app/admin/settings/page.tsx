@@ -3,133 +3,283 @@ import { useState, useEffect } from 'react';
 
 export default function SettingsPage() {
   const [xtreamUrl, setXtreamUrl] = useState('');
+  const [backupUrls, setBackupUrls] = useState('');
   const [globalMessage, setGlobalMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
-  const [toastOk, setToastOk] = useState(true);
 
-  const showToast = (msg: string, ok = true) => {
-    setToast(msg); setToastOk(ok);
-    setTimeout(() => setToast(''), 3500);
+  // Auto Updater State
+  const [releaseForm, setReleaseForm] = useState({
+    version: '2.1.0',
+    versionCode: 2,
+    apkUrl: '',
+    changelog: 'Melhorias de desempenho, zapping ultra-rápido de canais e estabilizador de stream ao vivo.',
+    isMandatory: false,
+  });
+  const [savingRelease, setSavingRelease] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 4000);
   };
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
-      .then(d => {
-        setXtreamUrl(d.xtreamUrl || '');
-        setGlobalMessage(d.globalMessage || '');
+    Promise.all([
+      fetch('/api/settings').then((r) => r.json()),
+      fetch('/api/app/update').then((r) => r.json()),
+    ])
+      .then(([settings, release]) => {
+        if (settings) {
+          setXtreamUrl(settings.xtreamUrl || '');
+          setBackupUrls(settings.backupUrls || '');
+          setGlobalMessage(settings.globalMessage || '');
+        }
+        if (release && release.hasUpdate) {
+          setReleaseForm({
+            version: release.latestVersion || '2.1.0',
+            versionCode: release.versionCode || 2,
+            apkUrl: release.apkUrl || '',
+            changelog: release.changelog || '',
+            isMandatory: release.isMandatory || false,
+          });
+        }
       })
-      .catch(() => showToast('Erro ao carregar configuracoes', false))
+      .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  const save = async () => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
     setSaving(true);
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ xtreamUrl, globalMessage: globalMessage || null }),
+        body: JSON.stringify({
+          xtreamUrl,
+          backupUrls,
+          globalMessage: globalMessage || null,
+        }),
       });
       if (res.ok) {
-        showToast('Configuracoes salvas com sucesso!');
+        showToast('Configurações globais salvas com sucesso!');
       } else {
-        showToast('Erro ao salvar', false);
+        showToast('Erro ao salvar configurações');
       }
     } catch {
-      showToast('Erro de conexao', false);
+      showToast('Erro de conexão ao salvar');
     } finally {
       setSaving(false);
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '12px 16px', background: '#1a1a1a',
-    border: '1px solid #333', borderRadius: '10px', color: '#fff',
-    fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box',
-    transition: 'border-color 0.2s',
+  const handleSaveRelease = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!releaseForm.version || !releaseForm.apkUrl) {
+      return alert('Preencha a versão e a URL do APK');
+    }
+    setSavingRelease(true);
+    try {
+      const res = await fetch('/api/app/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(releaseForm),
+      });
+      if (res.ok) {
+        showToast('Nova versão do APK publicada com sucesso! Os apps receberão o aviso de atualização.');
+      } else {
+        showToast('Erro ao publicar versão');
+      }
+    } catch {
+      showToast('Erro de conexão ao publicar versão');
+    } finally {
+      setSavingRelease(false);
+    }
   };
 
-  if (loading) return (
-    <div style={{ color: '#666', textAlign: 'center', padding: '80px', fontSize: '1rem' }}>Carregando...</div>
-  );
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">Carregando configurações...</div>;
+  }
 
   return (
-    <div>
+    <div className="max-w-4xl w-full">
+      {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', background: toastOk ? '#22c55e' : '#e50914', color: '#fff', padding: '12px 24px', borderRadius: '10px', fontWeight: 700, zIndex: 999, fontSize: '0.9rem' }}>
+        <div className="fixed bottom-20 md:bottom-6 right-6 bg-[#e50914] text-white px-5 py-3 rounded-xl font-bold z-50 shadow-2xl animate-fade-in text-sm">
           {toast}
         </div>
       )}
 
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Configuracoes</h1>
-        <p style={{ color: '#666', margin: '6px 0 0', fontSize: '0.9rem' }}>Configuracoes gerais do servidor IPTV</p>
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-black tracking-tight">Configurações do Sistema</h1>
+        <p className="text-gray-400 text-xs md:text-sm mt-1">
+          Gerencie servidores padrão, proteção contra bloqueios (Failover) e atualizações do APK.
+        </p>
       </div>
 
-      <div style={{ maxWidth: '640px' }}>
-        <div className="mobile-full" style={{ background: '#111', border: '1px solid #222', borderRadius: '14px', padding: '32px', marginBottom: '24px' }}>
-          <h2 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700, margin: '0 0 24px', paddingBottom: '16px', borderBottom: '1px solid #222' }}>
-            Servidor Xtream Codes
+      <div className="space-y-6">
+        {/* Bloco 1: Servidores e Failover Anti-Bloqueio */}
+        <div className="bg-[#141414] border border-[#222] rounded-2xl p-5 md:p-6 shadow-lg">
+          <h2 className="text-base md:text-lg font-bold text-white mb-1 flex items-center gap-2">
+            <span>🛡️</span> Servidores IPTV & Multi-DNS (Anti-Bloqueio)
           </h2>
+          <p className="text-gray-400 text-xs mb-4">
+            Se o servidor principal for bloqueado por operadoras (Claro, Vivo, TIM), o aplicativo migrará automaticamente para os servidores de backup.
+          </p>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '8px', fontWeight: 600 }}>
-              URL Padrao do Servidor *
-            </label>
-            <input
-              type="text"
-              style={inputStyle}
-              value={xtreamUrl}
-              onChange={e => setXtreamUrl(e.target.value)}
-              placeholder="http://seu-provedor.com:80"
-              onFocus={e => (e.target.style.borderColor = '#e50914')}
-              onBlur={e => (e.target.style.borderColor = '#333')}
-            />
-            <p style={{ color: '#555', fontSize: '0.78rem', margin: '8px 0 0' }}>
-              Esta URL e retornada ao app Flutter no login. Permanece oculta dos clientes.
-            </p>
-          </div>
+          <form onSubmit={handleSaveSettings} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Servidor Xtream Padrão *
+              </label>
+              <input
+                type="text"
+                required
+                value={xtreamUrl}
+                onChange={(e) => setXtreamUrl(e.target.value)}
+                placeholder="http://servidor-principal.pro"
+                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+              />
+            </div>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '8px', fontWeight: 600 }}>
-              Mensagem Global (opcional)
-            </label>
-            <textarea
-              style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }}
-              value={globalMessage}
-              onChange={e => setGlobalMessage(e.target.value)}
-              placeholder="Ex: Manutencao programada para sabado as 02:00..."
-              onFocus={e => (e.target.style.borderColor = '#e50914')}
-              onBlur={e => (e.target.style.borderColor = '#333')}
-            />
-            <p style={{ color: '#555', fontSize: '0.78rem', margin: '8px 0 0' }}>
-              Exibida para todos os usuarios do app. Deixe em branco para ocultar.
-            </p>
-          </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Servidores de Backup / Failover (separados por vírgula)
+              </label>
+              <input
+                type="text"
+                value={backupUrls}
+                onChange={(e) => setBackupUrls(e.target.value)}
+                placeholder="http://backup1.pro, http://backup2.pro"
+                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+              />
+              <span className="text-[11px] text-gray-500 mt-1 block">
+                Ex: http://servidor2.shop, http://servidor3.xyz
+              </span>
+            </div>
 
-          <button
-            onClick={save}
-            disabled={saving}
-            style={{ background: saving ? '#555' : '#e50914', color: '#fff', border: 'none', borderRadius: '10px', padding: '14px 32px', fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', fontSize: '0.95rem' }}
-          >
-            {saving ? 'Salvando...' : 'Salvar Configuracoes'}
-          </button>
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Mensagem Global de Transmissão (Push OSD)
+              </label>
+              <textarea
+                rows={2}
+                value={globalMessage}
+                onChange={(e) => setGlobalMessage(e.target.value)}
+                placeholder="Ex: Jogos da Champions League disponíveis! Suporte online até as 23h."
+                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm focus:border-[#e50914] outline-none"
+              />
+              <span className="text-[11px] text-gray-500 mt-1 block">
+                Deixe em branco se não quiser exibir nenhum banner de aviso no app dos clientes.
+              </span>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-[#e50914] hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-red-900/30 transition-all"
+              >
+                {saving ? 'Salvando...' : '💾 Salvar Configurações'}
+              </button>
+            </div>
+          </form>
         </div>
 
-        <div style={{ background: '#111', border: '1px solid #222', borderRadius: '14px', padding: '24px' }}>
-          <h2 style={{ color: '#fff', fontSize: '1rem', fontWeight: 700, margin: '0 0 16px' }}>Endpoint de Autenticacao</h2>
-          <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '12px' }}>
-            Configure o app Flutter para usar este endpoint:
+        {/* Bloco 2: Gestão do Auto-Atualizador de APK */}
+        <div className="bg-[#141414] border border-[#222] rounded-2xl p-5 md:p-6 shadow-lg">
+          <h2 className="text-base md:text-lg font-bold text-white mb-1 flex items-center gap-2">
+            <span>🔄</span> Gerenciador de Atualizações do App (In-App Updater)
+          </h2>
+          <p className="text-gray-400 text-xs mb-4">
+            Cadastre a versão mais recente do APK para que todos os clientes recebam um alerta na tela da TV e atualizem com 1 clique.
           </p>
-          <div style={{ background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', padding: '12px 16px', fontFamily: 'monospace', fontSize: '0.82rem', color: '#4ade80' }}>
-            POST /api/auth/app
-          </div>
-          <p style={{ color: '#555', fontSize: '0.78rem', margin: '10px 0 0' }}>
-            Body: username + password  |  Retorna: xtreamUrl
-          </p>
+
+          <form onSubmit={handleSaveRelease} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">
+                  Nome da Versão (ex: 2.1.0) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={releaseForm.version}
+                  onChange={(e) => setReleaseForm({ ...releaseForm, version: e.target.value })}
+                  placeholder="2.1.0"
+                  className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">
+                  Código da Versão (Version Code inteiro, ex: 2) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={releaseForm.versionCode}
+                  onChange={(e) => setReleaseForm({ ...releaseForm, versionCode: parseInt(e.target.value) || 1 })}
+                  placeholder="2"
+                  className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                URL Direta de Download do APK *
+              </label>
+              <input
+                type="text"
+                required
+                value={releaseForm.apkUrl}
+                onChange={(e) => setReleaseForm({ ...releaseForm, apkUrl: e.target.value })}
+                placeholder="https://github.com/GuilhermeRodrigueslima/Center_Play/releases/download/v2.1.0/app-release.apk"
+                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+              />
+              <span className="text-[11px] text-gray-500 mt-1 block">
+                Cole o link direto do GitHub Release ou do seu servidor de arquivos.
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Novidades desta versão (Changelog exibido na tela da TV)
+              </label>
+              <textarea
+                rows={2}
+                value={releaseForm.changelog}
+                onChange={(e) => setReleaseForm({ ...releaseForm, changelog: e.target.value })}
+                placeholder="Ex: Novo player ultra rápido, correção no zapping de canais e suporte a TV Box."
+                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm focus:border-[#e50914] outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isMandatory"
+                checked={releaseForm.isMandatory}
+                onChange={(e) => setReleaseForm({ ...releaseForm, isMandatory: e.target.checked })}
+                className="rounded border-[#444] text-[#e50914] focus:ring-0"
+              />
+              <label htmlFor="isMandatory" className="text-xs text-gray-300 cursor-pointer">
+                Atualização Obrigatória (bloqueia o app antigo até o usuário atualizar)
+              </label>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={savingRelease}
+                className="bg-[#2563eb] hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/30 transition-all"
+              >
+                {savingRelease ? 'Publicando...' : '🚀 Publicar Nova Versão do APK'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
