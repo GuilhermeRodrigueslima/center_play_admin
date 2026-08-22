@@ -20,7 +20,6 @@ export async function POST(req: Request) {
     });
 
     if (!device) {
-      // Auto-cadastra o novo aparelho para aparecer IMEDIATAMENTE no painel como "Aguardando Lista"
       device = await prisma.device.create({
         data: {
           macAddress: cleanMac,
@@ -30,7 +29,6 @@ export async function POST(req: Request) {
         },
       });
     } else {
-      // Atualiza o timestamp de visualizacao e a key
       await prisma.device.update({
         where: { id: device.id },
         data: {
@@ -78,8 +76,12 @@ export async function POST(req: Request) {
       expiresAt: device.expiresAt || null,
       statusMessage: isConfigured ? 'Ativado' : 'Aguardando Lista',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in /api/device/check:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error?.message || 'Database error',
+      name: error?.name,
+      code: error?.code,
+    }, { status: 500 });
   }
 }
