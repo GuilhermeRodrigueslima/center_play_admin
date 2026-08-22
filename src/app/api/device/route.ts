@@ -8,9 +8,9 @@ export async function GET() {
       orderBy: { updatedAt: 'desc' },
     });
     return NextResponse.json(devices);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching devices:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Unknown error', stack: error?.stack }, { status: 500 });
   }
 }
 
@@ -52,8 +52,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(device);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving device:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Unknown error', stack: error?.stack }, { status: 500 });
   }
 }
