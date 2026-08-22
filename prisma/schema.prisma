@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model AdminUser {
@@ -56,8 +56,8 @@ model DeviceSession {
   id          String   @id @default(cuid())
   deviceId    String
   device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  ping        Int?
-  lastPingAt  DateTime @default(now())
-  connectedAt DateTime @default(now())
-  status      String   @default("online")
+  ipAddress   String?
+  userAgent   String?
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
 }
