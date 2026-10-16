@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 async function ensureSettingsColumns() {
   try {
@@ -13,24 +14,26 @@ async function ensureSettingsColumns() {
 }
 
 export async function GET() {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     await ensureSettingsColumns();
     const settings = await sql`SELECT * FROM "AppSettings" LIMIT 1`;
     if (settings.length === 0) {
       return NextResponse.json({
-        xtreamUrl: 'http://observacaoonline.pro',
+        xtreamUrl: '',
         backupUrls: '',
         globalMessage: null,
       });
     }
     return NextResponse.json({
-      xtreamUrl: settings[0].xtreamUrl || 'http://observacaoonline.pro',
+      xtreamUrl: settings[0].xtreamUrl || '',
       backupUrls: settings[0].backupUrls || '',
       globalMessage: settings[0].globalMessage || null,
     });
   } catch (error: any) {
     return NextResponse.json({
-      xtreamUrl: 'http://observacaoonline.pro',
+      xtreamUrl: '',
       backupUrls: '',
       globalMessage: null,
     });
@@ -38,12 +41,27 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     await ensureSettingsColumns();
     const body = await req.json();
     const { xtreamUrl, backupUrls, globalMessage } = body;
-    const cleanUrl = (xtreamUrl || 'http://observacaoonline.pro').trim();
+    const cleanUrl = String(xtreamUrl || '').trim();
     const cleanBackup = (backupUrls || '').trim();
+
+    if (!cleanUrl.startsWith('https://')) {
+      return NextResponse.json({ error: 'A URL principal deve usar HTTPS.' }, { status: 400 });
+    }
+
+    const invalidBackupUrl = cleanBackup
+      .split(/\r?\n|,/)
+      .map((url: string) => url.trim())
+      .filter(Boolean)
+      .some((url: string) => !url.startsWith('https://'));
+    if (invalidBackupUrl) {
+      return NextResponse.json({ error: 'As URLs de backup devem usar HTTPS.' }, { status: 400 });
+    }
 
     const existing = await sql`SELECT * FROM "AppSettings" LIMIT 1`;
     let result: any;

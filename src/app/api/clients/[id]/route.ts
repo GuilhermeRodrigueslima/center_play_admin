@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await params;
     const body = await req.json();
@@ -31,6 +34,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await params;
     await sql`

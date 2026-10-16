@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 // Listar todos os dispositivos cadastrados
 export async function GET() {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const devices = await sql`
       SELECT * FROM "Device" ORDER BY "updatedAt" DESC
@@ -16,6 +19,8 @@ export async function GET() {
 
 // Criar ou ativar dispositivo manualmente pelo painel
 export async function POST(req: Request) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const body = await req.json();
     const { macAddress, deviceKey, name, xtreamUrl, username, password, expiresAt, notes } = body;
@@ -25,8 +30,10 @@ export async function POST(req: Request) {
     }
 
     const cleanMac = macAddress.toUpperCase().trim();
-    const safeKey = deviceKey || Math.floor(100000 + Math.random() * 900000).toString();
-    const generatedId = 'dev_' + Math.random().toString(36).substring(2, 12);
+    const safeKey = typeof deviceKey === 'string' && /^[a-f0-9]{64}$/i.test(deviceKey)
+      ? deviceKey
+      : `${crypto.randomUUID().replace(/-/g, '')}${crypto.randomUUID().replace(/-/g, '')}`;
+    const generatedId = crypto.randomUUID();
     const expDate = expiresAt ? new Date(expiresAt).toISOString() : null;
 
     const devices = await sql`
@@ -36,7 +43,6 @@ export async function POST(req: Request) {
         ${generatedId}, ${cleanMac}, ${safeKey}, ${name || 'Smart TV / TV Box'}, ${xtreamUrl || ''}, ${username || ''}, ${password || ''}, ${expDate}, ${notes || ''}, true, NOW(), NOW(), NOW()
       )
       ON CONFLICT ("macAddress") DO UPDATE SET
-        "deviceKey" = ${safeKey},
         "name" = COALESCE(EXCLUDED."name", "Device"."name"),
         "xtreamUrl" = EXCLUDED."xtreamUrl",
         "username" = EXCLUDED."username",

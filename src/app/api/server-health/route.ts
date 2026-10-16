@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 export async function POST(req: Request) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const { url } = await req.json();
     if (!url || typeof url !== 'string') {

@@ -19,7 +19,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#0a0a0a] text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#080311]/90 text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div
@@ -30,14 +30,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar Desktop & Drawer Mobile */}
       <aside
-        className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-[#121212] border-r border-[#222] z-50 flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-[#110620]/95 border-r border-[#2d124d] z-50 flex flex-col transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="p-5 border-b border-[#222] flex items-center justify-between">
+        <div className="p-5 border-b border-[#2d124d] flex items-center justify-between">
           <div>
-            <div className="text-[#e50914] text-xl font-black tracking-wider">CENTER PLAY</div>
-            <div className="text-[#777] text-[10px] tracking-widest uppercase font-semibold">Painel Admin</div>
+            <div className="text-[#a855f7] text-xl font-black tracking-wider">CENTER PLAY</div>
+            <div className="text-[#a1a1aa] text-[10px] tracking-widest uppercase font-semibold">Painel Admin</div>
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
@@ -56,8 +56,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
                   isActive
-                    ? 'bg-[#e50914] text-white shadow-lg shadow-red-900/30'
-                    : 'text-gray-400 hover:bg-[#1a1a1a] hover:text-white'
+                    ? 'bg-[#a855f7] text-white shadow-lg shadow-purple-900/40'
+                    : 'text-gray-400 hover:bg-[#1f0e38] hover:text-white'
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        <div className="p-4 border-t border-[#222] text-[#666] text-xs text-center">
+        <div className="p-4 border-t border-[#2d124d] text-[#888] text-xs text-center">
           Center Play v2.0 • Pro Edition
         </div>
       </aside>
@@ -75,22 +75,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-6">
         {/* Header Mobile */}
-        <header className="md:hidden h-14 bg-[#121212] border-b border-[#222] flex items-center justify-between px-4 sticky top-0 z-30">
+        <header className="md:hidden h-14 bg-[#110620]/95 border-b border-[#2d124d] flex items-center justify-between px-4 sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="text-white p-2 -ml-2 rounded-md hover:bg-[#222] focus:outline-none"
+              className="text-white p-2 -ml-2 rounded-md hover:bg-[#1f0e38] focus:outline-none"
               aria-label="Menu"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <span className="text-[#e50914] font-black text-lg">CENTER PLAY</span>
+            <span className="text-[#a855f7] font-black text-lg">CENTER PLAY</span>
           </div>
           <Link
             href="/admin/devices"
-            className="bg-[#e50914] text-white text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5"
+            className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5 shadow-md shadow-purple-900/30"
           >
             <span>➕</span> Ativar MAC
           </Link>
@@ -102,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </main>
 
         {/* Bottom Navigation Bar for Mobile Phones (Thumb-Friendly) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#121212]/95 border-t border-[#222] backdrop-blur-md z-30 flex items-center justify-around px-2">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#110620]/95 border-t border-[#2d124d] backdrop-blur-md z-30 flex items-center justify-around px-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -110,7 +110,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 className={`flex flex-col items-center justify-center flex-1 py-1 text-center ${
-                  isActive ? 'text-[#e50914] font-bold' : 'text-gray-400'
+                  isActive ? 'text-[#a855f7] font-bold' : 'text-gray-400'
                 }`}
               >
                 <span className="text-xl mb-0.5">{item.icon}</span>

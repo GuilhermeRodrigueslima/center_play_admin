@@ -78,7 +78,7 @@ export default function DevicesPage() {
     macAddress: '',
     deviceKey: '',
     name: '',
-    xtreamUrl: 'http://observacaoonline.pro',
+    xtreamUrl: '',
     username: '',
     password: '',
     expiresAt: '',
@@ -163,9 +163,9 @@ export default function DevicesPage() {
     setM3uSuccess(false);
     setForm({
       macAddress: '',
-      deviceKey: Math.floor(100000 + Math.random() * 900000).toString(),
+      deviceKey: '',
       name: '',
-      xtreamUrl: 'http://observacaoonline.pro',
+      xtreamUrl: '',
       username: '',
       password: '',
       expiresAt: '',
@@ -182,7 +182,7 @@ export default function DevicesPage() {
       macAddress: d.macAddress,
       deviceKey: d.deviceKey,
       name: d.name || '',
-      xtreamUrl: d.xtreamUrl || 'http://observacaoonline.pro',
+      xtreamUrl: d.xtreamUrl || '',
       username: d.username || '',
       password: d.password || '',
       expiresAt: d.expiresAt ? d.expiresAt.split('T')[0] : '',
@@ -610,7 +610,7 @@ export default function DevicesPage() {
                 <input
                   type="text"
                   required
-                  placeholder="http://servidor.pro"
+                    placeholder="https://servidor.exemplo"
                   value={form.xtreamUrl}
                   onChange={(e) => setForm({ ...form, xtreamUrl: e.target.value })}
                   className="w-full px-3 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm font-mono"
@@ -686,7 +686,7 @@ export default function DevicesPage() {
                 <input
                   type="text"
                   required
-                  placeholder="http://novo-servidor.pro"
+                  placeholder="https://novo-servidor.exemplo"
                   value={bulkUrl}
                   onChange={(e) => setBulkUrl(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-[#222] border border-[#444] rounded-lg text-white text-sm font-mono"

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 // Garante que a tabela AppRelease existe no Neon PostgreSQL
 async function ensureReleaseTable() {
@@ -56,6 +57,8 @@ export async function GET() {
 
 // Cadastrar nova versao do APK
 export async function POST(req: Request) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     await ensureReleaseTable();
     const body = await req.json();

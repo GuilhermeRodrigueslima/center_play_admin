@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 export async function POST(req: Request) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const body = await req.json();
     const { ids, xtreamUrl } = body as { ids: string[]; xtreamUrl: string };

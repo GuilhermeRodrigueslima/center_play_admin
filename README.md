@@ -1,4 +1,16 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Center Play — Painel administrativo
+
+Painel de administração e API do Center Play, desenvolvido com Next.js, PostgreSQL/Neon e Prisma.
+
+## Configuração obrigatória
+
+Copie `.env.example` para `.env` e preencha valores fortes e exclusivos para:
+
+- `DATABASE_URL`
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET` (mínimo de 32 caracteres)
+
+O painel não possui senha padrão e não inicia corretamente sem conexão de banco configurada.
 
 ## Getting Started
 

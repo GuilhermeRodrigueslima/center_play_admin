@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 export async function POST(req: Request) {
   try {
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const onlineThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const onlineDevices = await sql`

@@ -14,7 +14,7 @@ interface Client {
 }
 
 const EMPTY_FORM = {
-  username: '', password: '', name: '', xtreamUrl: 'http://observacaoonline.pro', expiresAt: '', notes: '', isActive: true,
+  username: '', password: '', name: '', xtreamUrl: '', expiresAt: '', notes: '', isActive: true,
 };
 
 // Parser inteligente para qualquer link M3U / HLS / SSIPTV

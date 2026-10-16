@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { requireAdminRequest } from '@/lib/admin-session';
 
 export async function GET() {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const clients = await sql`
       SELECT * FROM "Client" ORDER BY "createdAt" DESC
@@ -14,6 +17,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const unauthorized = await requireAdminRequest();
+  if (unauthorized) return unauthorized;
   try {
     const body = await req.json();
     const { username, password, name, xtreamUrl, expiresAt, notes } = body;

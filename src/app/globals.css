@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0f071a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,17 +12,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background: radial-gradient(circle at top right, #2a103d 0%, #0f071a 45%, #05020a 100%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
 }
 
 /* Custom Responsive Helpers for Admin Panel */
@@ -50,4 +45,3 @@ body {
 .admin-sidebar-transition {
   transition: transform 0.3s ease-in-out;
 }
-

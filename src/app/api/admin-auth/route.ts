@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createAdminSession, sessionCookieName, sessionCookieOptions } from '@/lib/admin-session';
 
 export async function POST(req: Request) {
   try {
     const { password } = await req.json();
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const expectedPassword = process.env.ADMIN_PASSWORD;
+
+    if (!expectedPassword) {
+      return NextResponse.json({ error: 'Admin authentication is not configured' }, { status: 503 });
+    }
 
     if (password === expectedPassword) {
       const cookieStore = await cookies();
-      cookieStore.set('admin_token', password, { 
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7 // 1 semana
-      });
+      cookieStore.set(sessionCookieName, await createAdminSession(), sessionCookieOptions());
       return NextResponse.json({ success: true });
     }
 
