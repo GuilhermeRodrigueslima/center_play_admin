@@ -50,17 +50,17 @@ export async function POST(req: Request) {
     const cleanUrl = String(xtreamUrl || '').trim();
     const cleanBackup = (backupUrls || '').trim();
 
-    if (!cleanUrl.startsWith('https://')) {
-      return NextResponse.json({ error: 'A URL principal deve usar HTTPS.' }, { status: 400 });
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      return NextResponse.json({ error: 'A URL principal deve começar com http:// ou https://' }, { status: 400 });
     }
 
     const invalidBackupUrl = cleanBackup
       .split(/\r?\n|,/)
       .map((url: string) => url.trim())
       .filter(Boolean)
-      .some((url: string) => !url.startsWith('https://'));
+      .some((url: string) => !url.startsWith('http://') && !url.startsWith('https://'));
     if (invalidBackupUrl) {
-      return NextResponse.json({ error: 'As URLs de backup devem usar HTTPS.' }, { status: 400 });
+      return NextResponse.json({ error: 'As URLs de backup devem começar com http:// ou https://' }, { status: 400 });
     }
 
     const existing = await sql`SELECT * FROM "AppSettings" LIMIT 1`;
