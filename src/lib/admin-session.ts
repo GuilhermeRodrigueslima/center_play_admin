@@ -3,28 +3,36 @@ import { NextResponse } from 'next/server';
 
 const sessionCookieName = 'center_play_admin_session';
 const encoder = new TextEncoder();
-const sessionLifetimeSeconds = 60 * 60 * 8;
+const sessionLifetimeSeconds = 60 * 60 * 24 * 30; // 30 dias
 
 function toBase64Url(value: Uint8Array | string) {
   const bytes = typeof value === 'string' ? encoder.encode(value) : value;
   let binary = '';
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
 function fromBase64Url(value: string) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+  const remainder = normalized.length % 4;
+  const padded = remainder === 0 ? normalized : normalized + '='.repeat(4 - remainder);
   const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 function getSessionSecret() {
-  const secret = process.env.ADMIN_SESSION_SECRET;
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD;
   if (secret && secret.length >= 32) {
     return secret;
+  }
+  if (secret && secret.length > 0) {
+    return (secret + '-center-play-admin-secret-padding-32').slice(0, 32);
   }
   return 'center-play-admin-default-secret-key-32-chars-ok';
 }
@@ -63,6 +71,81 @@ export async function isValidAdminSession(token?: string) {
   }
 }
 
+export function matchesConfiguredPassword(inputPassword: string): boolean {
+  if (!inputPassword) return false;
+
+  const configured = [
+    process.env.ADMIN_PASSWORD,
+    process.env.ADMIN_PASS,
+    process.env.ADMIN_PWD,
+    process.env.PASSWORD,
+    process.env.ADMIN_KEY,
+    process.env.MASTER_PASSWORD,
+    process.env.ADMIN_SECRET,
+  ].filter(Boolean) as string[];
+
+  // Fallback padrão somente se nenhuma variável estiver configurada
+  if (configured.length === 0) {
+    configured.push('admin123');
+  }
+
+  const cleanInput = inputPassword.trim();
+
+  for (const candidate of configured) {
+    const cleanCand = candidate.trim();
+    const unquotedCand = cleanCand.replace(/^["']|["']$/g, '');
+    if (
+      inputPassword === candidate ||
+      cleanInput === cleanCand ||
+      cleanInput === unquotedCand ||
+      inputPassword === unquotedCand
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function checkAdminPassword(password: string): Promise<boolean> {
+  // 1. Verifica contra as variáveis de ambiente na Vercel
+  if (matchesConfiguredPassword(password)) {
+    return true;
+  }
+
+  // 2. Verifica se existe tabela AdminUser no banco Neon
+  try {
+    const prismaModule = await import('@/lib/prisma');
+    const prisma = prismaModule.default;
+    const clean = password.trim();
+    const user = await prisma.adminUser.findFirst({
+      where: {
+        password: {
+          in: [password, clean],
+        },
+      },
+    });
+    if (user) return true;
+  } catch {
+    // Não-fatal caso o banco esteja indisponível
+  }
+
+  return false;
+}
+
+export async function isRequestAuthenticated(sessionToken?: string, adminToken?: string): Promise<boolean> {
+  if (sessionToken) {
+    const valid = await isValidAdminSession(sessionToken);
+    if (valid) return true;
+  }
+
+  if (adminToken && matchesConfiguredPassword(adminToken)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function sessionCookieOptions() {
   return {
     httpOnly: true,
@@ -74,8 +157,11 @@ export function sessionCookieOptions() {
 }
 
 export async function requireAdminRequest() {
-  const token = (await cookies()).get(sessionCookieName)?.value;
-  const valid = await isValidAdminSession(token);
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(sessionCookieName)?.value;
+  const adminToken = cookieStore.get('admin_token')?.value;
+
+  const valid = await isRequestAuthenticated(sessionToken, adminToken);
   return valid ? null : NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
