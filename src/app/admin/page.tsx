@@ -91,7 +91,7 @@ export default function AdminDashboard() {
 
         <Link
           href="/admin/devices"
-          className="bg-[#e50914] hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-red-900/30 transition-all flex items-center justify-center gap-2"
+          className="bg-[#a855f7] hover:bg-[#9333ea] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>📺</span> Gerenciar Ativações MAC
         </Link>
@@ -171,7 +171,7 @@ export default function AdminDashboard() {
                       <td className="py-3.5 text-right">
                         <Link
                           href="/admin/devices"
-                          className="bg-[#222] hover:bg-[#e50914] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all inline-block"
+                          className="bg-[#222] hover:bg-[#a855f7] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all inline-block"
                         >
                           {hasCreds ? '✏️ Editar' : '⚡ Ativar'}
                         </Link>

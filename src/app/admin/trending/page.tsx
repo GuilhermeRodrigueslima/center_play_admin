@@ -35,7 +35,7 @@ export default function TrendingPage() {
           <button
             onClick={() => setFilterType('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filterType === 'all' ? 'bg-[#e50914] text-white shadow-md' : 'text-gray-400 hover:text-white'
+              filterType === 'all' ? 'bg-[#a855f7] text-white shadow-md' : 'text-gray-400 hover:text-white'
             }`}
           >
             Todos
@@ -43,7 +43,7 @@ export default function TrendingPage() {
           <button
             onClick={() => setFilterType('vod')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filterType === 'vod' ? 'bg-[#e50914] text-white shadow-md' : 'text-gray-400 hover:text-white'
+              filterType === 'vod' ? 'bg-[#a855f7] text-white shadow-md' : 'text-gray-400 hover:text-white'
             }`}
           >
             🎬 Filmes
@@ -51,7 +51,7 @@ export default function TrendingPage() {
           <button
             onClick={() => setFilterType('series')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filterType === 'series' ? 'bg-[#e50914] text-white shadow-md' : 'text-gray-400 hover:text-white'
+              filterType === 'series' ? 'bg-[#a855f7] text-white shadow-md' : 'text-gray-400 hover:text-white'
             }`}
           >
             📺 Séries
@@ -105,14 +105,14 @@ export default function TrendingPage() {
 
               {/* Detalhes */}
               <div className="min-w-0 flex-1">
-                <h3 className="text-white text-sm font-bold truncate group-hover:text-[#e50914] transition-colors">
+                <h3 className="text-white text-sm font-bold truncate group-hover:text-[#a855f7] transition-colors">
                   {item.title}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#222] text-gray-300">
                     {item.type === 'vod' ? 'Filme' : 'Série'}
                   </span>
-                  <span className="text-xs font-bold text-red-400 flex items-center gap-1">
+                  <span className="text-xs font-bold text-purple-400 flex items-center gap-1">
                     <span>🔥</span> {item.viewCount} {item.viewCount === 1 ? 'play' : 'plays'}
                   </span>
                 </div>

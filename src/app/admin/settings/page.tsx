@@ -106,7 +106,7 @@ export default function SettingsPage() {
     <div className="max-w-4xl w-full">
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-20 md:bottom-6 right-6 bg-[#e50914] text-white px-5 py-3 rounded-xl font-bold z-50 shadow-2xl animate-fade-in text-sm">
+        <div className="fixed bottom-20 md:bottom-6 right-6 bg-[#a855f7] text-white px-5 py-3 rounded-xl font-bold z-50 shadow-2xl animate-fade-in text-sm">
           {toast}
         </div>
       )}
@@ -120,7 +120,7 @@ export default function SettingsPage() {
 
       <div className="space-y-6">
         {/* Bloco 1: Servidores e Failover Anti-Bloqueio */}
-        <div className="bg-[#141414] border border-[#222] rounded-2xl p-5 md:p-6 shadow-lg">
+        <div className="bg-[#110620]/90 border border-[#2d124d] rounded-2xl p-5 md:p-6 shadow-xl backdrop-blur-md">
           <h2 className="text-base md:text-lg font-bold text-white mb-1 flex items-center gap-2">
             <span>🛡️</span> Servidores IPTV & Multi-DNS (Anti-Bloqueio)
           </h2>
@@ -139,7 +139,7 @@ export default function SettingsPage() {
                 value={xtreamUrl}
                 onChange={(e) => setXtreamUrl(e.target.value)}
                 placeholder="http://servidor-principal.pro"
-                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+                className="w-full px-3.5 py-2.5 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white text-sm font-mono focus:border-[#a855f7] outline-none transition-all"
               />
             </div>
 
@@ -152,7 +152,7 @@ export default function SettingsPage() {
                 value={backupUrls}
                 onChange={(e) => setBackupUrls(e.target.value)}
                 placeholder="http://backup1.pro, http://backup2.pro"
-                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+                className="w-full px-3.5 py-2.5 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white text-sm font-mono focus:border-[#a855f7] outline-none transition-all"
               />
               <span className="text-[11px] text-gray-500 mt-1 block">
                 Ex: http://servidor2.shop, http://servidor3.xyz
@@ -168,7 +168,7 @@ export default function SettingsPage() {
                 value={globalMessage}
                 onChange={(e) => setGlobalMessage(e.target.value)}
                 placeholder="Ex: Jogos da Champions League disponíveis! Suporte online até as 23h."
-                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm focus:border-[#e50914] outline-none"
+                className="w-full px-3.5 py-2.5 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white text-sm focus:border-[#a855f7] outline-none transition-all"
               />
               <span className="text-[11px] text-gray-500 mt-1 block">
                 Deixe em branco se não quiser exibir nenhum banner de aviso no app dos clientes.
@@ -179,7 +179,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="bg-[#e50914] hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-red-900/30 transition-all"
+                className="bg-[#a855f7] hover:bg-[#9333ea] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/40 transition-all cursor-pointer"
               >
                 {saving ? 'Salvando...' : '💾 Salvar Configurações'}
               </button>
@@ -188,7 +188,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Bloco 2: Gestão do Auto-Atualizador de APK */}
-        <div className="bg-[#141414] border border-[#222] rounded-2xl p-5 md:p-6 shadow-lg">
+        <div className="bg-[#110620]/90 border border-[#2d124d] rounded-2xl p-5 md:p-6 shadow-xl backdrop-blur-md">
           <h2 className="text-base md:text-lg font-bold text-white mb-1 flex items-center gap-2">
             <span>🔄</span> Gerenciador de Atualizações do App (In-App Updater)
           </h2>
@@ -208,7 +208,7 @@ export default function SettingsPage() {
                   value={releaseForm.version}
                   onChange={(e) => setReleaseForm({ ...releaseForm, version: e.target.value })}
                   placeholder="2.1.0"
-                  className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+                  className="w-full px-3.5 py-2.5 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white text-sm font-mono focus:border-[#a855f7] outline-none transition-all"
                 />
               </div>
 
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                   value={releaseForm.versionCode}
                   onChange={(e) => setReleaseForm({ ...releaseForm, versionCode: parseInt(e.target.value) || 1 })}
                   placeholder="2"
-                  className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+                  className="w-full px-3.5 py-2.5 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white text-sm font-mono focus:border-[#a855f7] outline-none transition-all"
                 />
               </div>
             </div>
@@ -237,7 +237,7 @@ export default function SettingsPage() {
                 value={releaseForm.apkUrl}
                 onChange={(e) => setReleaseForm({ ...releaseForm, apkUrl: e.target.value })}
                 placeholder="https://github.com/GuilhermeRodrigueslima/Center_Play/releases/download/v2.1.0/app-release.apk"
-                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm font-mono focus:border-[#e50914] outline-none"
+                className="w-full px-3.5 py-2.5 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white text-sm font-mono focus:border-[#a855f7] outline-none transition-all"
               />
               <span className="text-[11px] text-gray-500 mt-1 block">
                 Cole o link direto do GitHub Release ou do seu servidor de arquivos.
@@ -253,7 +253,7 @@ export default function SettingsPage() {
                 value={releaseForm.changelog}
                 onChange={(e) => setReleaseForm({ ...releaseForm, changelog: e.target.value })}
                 placeholder="Ex: Novo player ultra rápido, correção no zapping de canais e suporte a TV Box."
-                className="w-full px-3.5 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-white text-sm focus:border-[#e50914] outline-none"
+                className="w-full px-3.5 py-2.5 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white text-sm focus:border-[#a855f7] outline-none transition-all"
               />
             </div>
 
@@ -263,7 +263,7 @@ export default function SettingsPage() {
                 id="isMandatory"
                 checked={releaseForm.isMandatory}
                 onChange={(e) => setReleaseForm({ ...releaseForm, isMandatory: e.target.checked })}
-                className="rounded border-[#444] text-[#e50914] focus:ring-0"
+                className="rounded border-[#3b1764] text-[#a855f7] focus:ring-0"
               />
               <label htmlFor="isMandatory" className="text-xs text-gray-300 cursor-pointer">
                 Atualização Obrigatória (bloqueia o app antigo até o usuário atualizar)
@@ -274,7 +274,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={savingRelease}
-                className="bg-[#2563eb] hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/30 transition-all"
+                className="bg-[#a855f7] hover:bg-[#9333ea] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/40 transition-all cursor-pointer"
               >
                 {savingRelease ? 'Publicando...' : '🚀 Publicar Nova Versão do APK'}
               </button>

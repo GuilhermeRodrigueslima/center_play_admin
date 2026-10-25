@@ -80,7 +80,7 @@ const inputStyle: React.CSSProperties = {
 };
 const labelStyle: React.CSSProperties = { color: '#aaa', fontSize: '0.82rem', display: 'block', marginBottom: '5px' };
 const btnRed: React.CSSProperties = {
-  background: '#e50914', color: '#fff', border: 'none', borderRadius: '8px',
+  background: '#a855f7', color: '#fff', border: 'none', borderRadius: '8px',
   padding: '10px 20px', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem',
 };
 const btnGray: React.CSSProperties = {
@@ -316,7 +316,7 @@ export default function ClientsPage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#e50914', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, zIndex: 999 }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#a855f7', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, zIndex: 999 }}>
           {toast}
         </div>
       )}
@@ -329,7 +329,7 @@ export default function ClientsPage() {
         </div>
         <div className="mobile-stack" style={{ display: 'flex', gap: '10px', width: typeof window !== 'undefined' && window.innerWidth <= 768 ? '100%' : 'auto' }}>
           {selected.size > 0 && (
-            <button onClick={() => setShowBulkModal(true)} className="mobile-full" style={{ ...btnGray, borderColor: '#e50914', color: '#fff' }}>
+            <button onClick={() => setShowBulkModal(true)} className="mobile-full" style={{ ...btnGray, borderColor: '#a855f7', color: '#fff' }}>
               Massa ({selected.size})
             </button>
           )}

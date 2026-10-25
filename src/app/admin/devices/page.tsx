@@ -293,7 +293,7 @@ export default function DevicesPage() {
 
           <button
             onClick={openAddModal}
-            className="flex-1 md:flex-none bg-[#e50914] hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-red-900/30 transition-all"
+            className="flex-1 md:flex-none bg-[#a855f7] hover:bg-[#9333ea] text-white px-4 py-2.5 rounded-lg font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-purple-900/40 transition-all cursor-pointer"
           >
             ➕ Ativar Novo MAC
           </button>
@@ -307,7 +307,7 @@ export default function DevicesPage() {
           placeholder="🔍 Buscar por MAC, Nome ou Usuário..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:max-w-md px-4 py-3 bg-[#161616] border border-[#2e2e2e] rounded-xl text-white text-sm focus:outline-none focus:border-[#e50914] transition-colors"
+          className="w-full md:max-w-md px-4 py-3 bg-[#161616] border border-[#2e2e2e] rounded-xl text-white text-sm focus:outline-none focus:border-[#a855f7] transition-colors"
         />
       </div>
 
@@ -331,7 +331,7 @@ export default function DevicesPage() {
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-mono font-black text-[#e50914] text-base">{d.macAddress}</div>
+                    <div className="font-mono font-black text-[#a855f7] text-base">{d.macAddress}</div>
                     <div className="text-xs text-gray-400 font-medium">{d.name || 'Sem nome atribuído'}</div>
                   </div>
                   <button
@@ -461,7 +461,7 @@ export default function DevicesPage() {
                       />
                     </td>
                     <td className="p-4">
-                      <div className="font-mono font-bold text-[#e50914]">{d.macAddress}</div>
+                      <div className="font-mono font-bold text-[#a855f7]">{d.macAddress}</div>
                       <div className="text-xs text-gray-500">Key: {d.deviceKey}</div>
                     </td>
                     <td className="p-4">
@@ -662,7 +662,7 @@ export default function DevicesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#e50914] hover:bg-red-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-red-900/30 transition-all"
+                  className="px-5 py-2.5 bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-lg text-sm font-bold shadow-lg shadow-purple-900/40 transition-all cursor-pointer"
                 >
                   💾 Salvar e Ativar
                 </button>
@@ -702,7 +702,7 @@ export default function DevicesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#e50914] text-white rounded-lg text-sm font-bold"
+                  className="px-5 py-2 bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-lg text-sm font-bold shadow-lg shadow-purple-900/40 transition-all cursor-pointer"
                 >
                   Atualizar Todos
                 </button>
