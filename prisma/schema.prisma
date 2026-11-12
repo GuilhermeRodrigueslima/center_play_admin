@@ -16,17 +16,32 @@ model AdminUser {
   updatedAt DateTime @updatedAt
 }
 
-model Client {
+model Reseller {
   id        String   @id @default(cuid())
   username  String   @unique
   password  String
   name      String?
-  xtreamUrl String
   isActive  Boolean  @default(true)
-  expiresAt DateTime?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  clients   Client[]
+  devices   Device[]
+}
+
+model Client {
+  id         String    @id @default(cuid())
+  username   String    @unique
+  password   String
+  name       String?
+  xtreamUrl  String
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime?
+  notes      String?
+  resellerId String?
+  reseller   Reseller? @relation(fields: [resellerId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model Device {
@@ -41,6 +56,8 @@ model Device {
   expiresAt   DateTime?
   notes       String?
   lastSeenAt  DateTime? @default(now())
+  resellerId  String?
+  reseller    Reseller? @relation(fields: [resellerId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   sessions    DeviceSession[]
@@ -49,16 +66,17 @@ model Device {
 model AppSettings {
   id            String   @id @default(cuid())
   xtreamUrl     String
+  backupUrls    String?  @default("")
   globalMessage String?
   updatedAt     DateTime @updatedAt
 }
 
 model DeviceSession {
-  id          String   @id @default(cuid())
-  deviceId    String
-  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  ipAddress   String?
-  userAgent   String?
-  startedAt   DateTime @default(now())
-  endedAt     DateTime?
+  id        String   @id @default(cuid())
+  deviceId  String
+  device    Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  userAgent String?
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
 }

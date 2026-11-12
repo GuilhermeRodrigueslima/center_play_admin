@@ -8,7 +8,10 @@ export async function middleware(request: NextRequest) {
     const sessionToken = request.cookies.get('center_play_admin_session')?.value;
     const adminToken = request.cookies.get('admin_token')?.value;
 
-    const authenticated = await isRequestAuthenticated(sessionToken, adminToken);
+    // Aceita session HMAC ou token legado de admin
+    const authenticated =
+      (await isRequestAuthenticated(sessionToken)) ||
+      (await isRequestAuthenticated(adminToken));
     if (!authenticated) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }

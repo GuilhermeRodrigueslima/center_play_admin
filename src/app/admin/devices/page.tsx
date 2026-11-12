@@ -21,10 +21,10 @@ function parseM3uLink(rawUrl: string) {
   try {
     const trimmed = rawUrl.trim();
     if (!trimmed) return null;
-    
+
     const parsed = new URL(trimmed.startsWith('http') ? trimmed : `http://${trimmed}`);
     const hostUrl = `${parsed.protocol}//${parsed.host}`;
-    
+
     // 1. M3U / HLS Completo: get.php?username=XXX&password=YYY...
     if (parsed.searchParams.has('username') && parsed.searchParams.has('password')) {
       return {
@@ -33,7 +33,7 @@ function parseM3uLink(rawUrl: string) {
         password: parsed.searchParams.get('password') || '',
       };
     }
-    
+
     // 2. M3U / HLS / SSIPTV Curto: /p/USERNAME/PASSWORD/m3u
     const pMatch = parsed.pathname.match(/\/p\/([^\/]+)\/([^\/]+)/i);
     if (pMatch && pMatch[1] && pMatch[2]) {
@@ -43,7 +43,7 @@ function parseM3uLink(rawUrl: string) {
         password: pMatch[2],
       };
     }
-    
+
     // 3. Streams diretos: /live/USERNAME/PASSWORD/123.m3u8
     const liveMatch = parsed.pathname.match(/\/(?:live|movie|series)\/([^\/]+)\/([^\/]+)/i);
     if (liveMatch && liveMatch[1] && liveMatch[2]) {

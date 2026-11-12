@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireAdminRequest } from '@/lib/admin-session';
+import { getPanelSession } from '@/lib/admin-session';
+
+async function requireMasterRequest() {
+  const session = await getPanelSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.role !== 'master') return NextResponse.json({ error: 'Acesso restrito ao master' }, { status: 403 });
+  return null;
+}
 
 async function ensureSettingsColumns() {
   try {
@@ -14,7 +21,7 @@ async function ensureSettingsColumns() {
 }
 
 export async function GET() {
-  const unauthorized = await requireAdminRequest();
+  const unauthorized = await requireMasterRequest();
   if (unauthorized) return unauthorized;
   try {
     await ensureSettingsColumns();
@@ -41,7 +48,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const unauthorized = await requireAdminRequest();
+  const unauthorized = await requireMasterRequest();
   if (unauthorized) return unauthorized;
   try {
     await ensureSettingsColumns();

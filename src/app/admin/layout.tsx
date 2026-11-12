@@ -5,16 +5,21 @@ import { usePathname } from 'next/navigation';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [role, setRole] = useState<'master' | 'reseller' | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    fetch('/api/session').then((res) => res.ok ? res.json() : null).then((data) => setRole(data?.role ?? null)).catch(() => setRole(null));
+  }, []);
+
   const navItems = [
     { href: '/admin', label: 'Dashboard', icon: '📊' },
     { href: '/admin/devices', label: 'Ativação MAC', icon: '📺' },
-    { href: '/admin/trending', label: 'Mais Assistidos', icon: '🔥' },
+    ...(role === 'master' ? [{ href: '/admin/trending', label: 'Mais Assistidos', icon: '🔥' }, { href: '/admin/resellers', label: 'Revendedores', icon: '🤝' }] : []),
     { href: '/admin/settings', label: 'Configurações', icon: '⚙️' },
   ];
 

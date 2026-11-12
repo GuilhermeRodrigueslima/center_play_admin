@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { getPanelSession } from '@/lib/admin-session';
 
 async function ensureContentViewTable() {
   await sql`
@@ -18,6 +19,8 @@ async function ensureContentViewTable() {
 // Retornar lista dos filmes e series mais assistidos
 export async function GET(req: Request) {
   try {
+    const session = await getPanelSession();
+    if (!session || session.role !== 'master') return NextResponse.json({ error: 'Acesso restrito ao master' }, { status: 403 });
     await ensureContentViewTable();
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');

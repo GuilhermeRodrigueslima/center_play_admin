@@ -2,6 +2,7 @@
 import { useState } from 'react';
 
 export default function AdminLogin() {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -9,7 +10,7 @@ export default function AdminLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) {
-      setError('Por favor, digite a senha mestra.');
+      setError('Informe sua senha.');
       return;
     }
 
@@ -20,7 +21,7 @@ export default function AdminLogin() {
       const res = await fetch('/api/admin-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -62,8 +63,22 @@ export default function AdminLogin() {
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
-              Senha Mestra
-            </label>
+            Usuário (revendedor, opcional para master)
+          </label>
+          <input
+            type="text"
+            placeholder="Deixe vazio para acesso master"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
+            className="w-full px-4 py-3 bg-[#1a0a2e] border border-[#3b1764] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 transition-all text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+            Senha
+          </label>
             <input
               type="password"
               placeholder="Digite sua senha..."
