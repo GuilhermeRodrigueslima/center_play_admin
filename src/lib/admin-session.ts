@@ -18,7 +18,7 @@ function toBase64Url(value: Uint8Array | string) {
 }
 
 function fromBase64Url(value: string) {
-  const normalized = value.replace(/-/g, '+').replace(/\//g, '/');
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const remainder = normalized.length % 4;
   const padded = remainder === 0 ? normalized : normalized + '='.repeat(4 - remainder);
   const binary = atob(padded);
@@ -30,16 +30,20 @@ function fromBase64Url(value: string) {
 }
 
 export function isAdminAuthConfigured() {
+  const password = process.env.ADMIN_PASSWORD?.trim() ?? '';
   const secret = process.env.ADMIN_SESSION_SECRET?.trim() ?? '';
-  // A senha master pode vir de ADMIN_PASSWORD ou do registro AdminUser.
-  // A chave HMAC, porém, é obrigatória para emitir sessões válidas.
-  return secret.length >= 32;
+  return secret.length >= 32 || password.length >= 8;
 }
 
 function getSessionSecret() {
   const secret = process.env.ADMIN_SESSION_SECRET?.trim() ?? '';
-  if (secret.length < 32) return null;
-  return secret;
+  if (secret.length >= 32) return secret;
+
+  // Compatibilidade com instalações antigas que configuraram apenas ADMIN_PASSWORD.
+  // ADMIN_SESSION_SECRET continua sendo a opção recomendada e tem prioridade.
+  const password = process.env.ADMIN_PASSWORD?.trim() ?? '';
+  if (password.length < 8) return null;
+  return `center-play-session-v1:${password}`;
 }
 
 async function signingKey() {
