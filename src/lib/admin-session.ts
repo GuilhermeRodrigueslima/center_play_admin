@@ -30,9 +30,10 @@ function fromBase64Url(value: string) {
 }
 
 export function isAdminAuthConfigured() {
-  const password = process.env.ADMIN_PASSWORD?.trim() ?? '';
   const secret = process.env.ADMIN_SESSION_SECRET?.trim() ?? '';
-  return password.length >= 8 && secret.length >= 32;
+  // A senha master pode vir de ADMIN_PASSWORD ou do registro AdminUser.
+  // A chave HMAC, porém, é obrigatória para emitir sessões válidas.
+  return secret.length >= 32;
 }
 
 function getSessionSecret() {
@@ -107,21 +108,7 @@ export function matchesConfiguredPassword(inputPassword: string): boolean {
 }
 
 export async function checkAdminPassword(password: string): Promise<boolean> {
-  if (matchesConfiguredPassword(password)) return true;
-
-  try {
-    const prismaModule = await import('@/lib/prisma');
-    const prisma = prismaModule.default;
-    const clean = password.trim();
-    const user = await prisma.adminUser.findFirst({
-      where: { password: { in: [password, clean] } },
-    });
-    if (user) return true;
-  } catch {
-    // Banco indisponível não libera acesso.
-  }
-
-  return false;
+  return matchesConfiguredPassword(password);
 }
 
 export async function isRequestAuthenticated(sessionToken?: string): Promise<boolean> {

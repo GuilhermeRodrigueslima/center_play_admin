@@ -6,12 +6,7 @@ export async function middleware(request: NextRequest) {
   // Proteger todas as rotas /admin, exceto /admin/login
   if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/login')) {
     const sessionToken = request.cookies.get('center_play_admin_session')?.value;
-    const adminToken = request.cookies.get('admin_token')?.value;
-
-    // Aceita session HMAC ou token legado de admin
-    const authenticated =
-      (await isRequestAuthenticated(sessionToken)) ||
-      (await isRequestAuthenticated(adminToken));
+    const authenticated = await isRequestAuthenticated(sessionToken);
     if (!authenticated) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
