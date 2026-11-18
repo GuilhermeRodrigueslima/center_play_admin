@@ -17,7 +17,7 @@ const EMPTY_FORM = {
   username: '', password: '', name: '', xtreamUrl: '', expiresAt: '', notes: '', isActive: true,
 };
 
-// Parser inteligente para qualquer link M3U / HLS / SSIPTV
+// Parser compatível com links M3U, HLS e SSIPTV
 function parseM3uLink(rawUrl: string) {
   try {
     const trimmed = rawUrl.trim();

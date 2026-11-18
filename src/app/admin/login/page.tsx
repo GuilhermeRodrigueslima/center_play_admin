@@ -63,11 +63,10 @@ export default function AdminLogin() {
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
-            Usuário (revendedor, opcional para master)
+            Usuário
           </label>
           <input
             type="text"
-            placeholder="Deixe vazio para acesso master"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={loading}

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { sql } from '@/lib/db';
+import { ensureResellerSchema } from '@/lib/reseller-schema';
 import {
   createAdminSession,
   sessionCookieName,
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
     }
 
     if (!isValid && username) {
+      await ensureResellerSchema();
       const rows = await sql`
         SELECT "id", "isActive"
         FROM "Reseller"
